@@ -58,13 +58,13 @@ public final class Exporter {
     }
 
     public static Result exportExe(Project project, File destDir) {
-        Path jdkBin = Paths.get(System.getProperty("java.home"), "bin");
-        Path jpackage = jdkBin.resolve(isWindows() ? "jpackage.exe" : "jpackage");
-        if (!Files.exists(jpackage)) {
-            return Result.fail("当前运行环境不是完整 JDK（缺少 jpackage）。\n"
-                    + "请用 JDK 14 及以上版本启动创作器后再导出 EXE。\n当前 java.home = "
+        File jpackageFile = JavaEnv.tool("jpackage");
+        if (jpackageFile == null) {
+            return Result.fail("没找到可用的 jpackage：请确认已安装 JDK 14 及以上版本，"
+                    + "并在「设置 → Java」里选一个带 jpackage 的 JDK。\n当前 java.home = "
                     + System.getProperty("java.home"));
         }
+        Path jpackage = jpackageFile.toPath();
 
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {

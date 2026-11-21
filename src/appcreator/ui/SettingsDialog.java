@@ -1,5 +1,6 @@
 package appcreator.ui;
 
+import appcreator.gen.JavaEnv;
 import appcreator.io.Lang;
 
 import javax.swing.*;
@@ -14,6 +15,8 @@ import java.util.List;
 public class SettingsDialog extends JDialog {
 
     private final JComboBox<Item> combo = new JComboBox<Item>();
+    private final JComboBox<Object> javaCombo = new JComboBox<Object>();
+    private final JLabel javaHint = new JLabel(" ");
     private final Runnable onApplied;
 
     public SettingsDialog(JFrame owner, Runnable onApplied) {
@@ -43,7 +46,46 @@ public class SettingsDialog extends JDialog {
         browse.setBorder(new EmptyBorder(6, 12, 6, 12));
         browse.addActionListener(e -> choosePack());
         langRow.add(browse, BorderLayout.EAST);
-        body.add(langRow, BorderLayout.NORTH);
+
+        // Java 选择：下拉框列出本机检测到并能用的所有 Java
+        JPanel javaRow = new JPanel(new BorderLayout(10, 0));
+        javaRow.setOpaque(false);
+        javaRow.setBorder(new EmptyBorder(8, 0, 0, 0));
+        javaRow.add(new JLabel("Java"), BorderLayout.WEST);
+        javaCombo.setFont(Theme.ui(12));
+        javaCombo.setPreferredSize(new Dimension(260, 30));
+        javaCombo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof JavaEnv.Jdk) {
+                    JavaEnv.Jdk j = (JavaEnv.Jdk) value;
+                    setText(j.title());
+                    setToolTipText(j.detail());
+                } else {
+                    setText("自动（跟随当前运行环境）");
+                    setToolTipText("不指定，直接用启动创作器的那个 Java");
+                }
+                return this;
+            }
+        });
+        javaRow.add(javaCombo, BorderLayout.CENTER);
+        RoundButton redetect = new RoundButton("重新检测", Theme.SOFT, Theme.ACCENT_DARK);
+        redetect.setBorder(new EmptyBorder(6, 12, 6, 12));
+        redetect.addActionListener(e -> redetect(redetect));
+        javaRow.add(redetect, BorderLayout.EAST);
+
+        JPanel rows = new JPanel();
+        rows.setOpaque(false);
+        rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
+        rows.add(langRow);
+        rows.add(javaRow);
+        javaHint.setFont(Theme.ui(11));
+        javaHint.setForeground(Theme.MUTED);
+        javaHint.setBorder(new EmptyBorder(4, 34, 0, 0));
+        rows.add(javaHint);
+        body.add(rows, BorderLayout.NORTH);
 
         JTextArea tip = new JTextArea();
         tip.setEditable(false);
@@ -79,9 +121,51 @@ public class SettingsDialog extends JDialog {
         root.add(actions, BorderLayout.SOUTH);
 
         loadItems();
+        fillJava();
         pack();
-        setSize(Math.max(560, getWidth()), Math.max(430, getHeight()));
+        setSize(Math.max(560, getWidth()), Math.max(470, getHeight()));
         setLocationRelativeTo(owner);
+    }
+
+    /** 把检测到的 Java 填进下拉框，保留当前选择 */
+    private void fillJava() {
+        javaCombo.removeAllItems();
+        javaCombo.addItem("自动");
+        JavaEnv.Jdk sel = JavaEnv.selected();
+        JavaEnv.Jdk selItem = null;
+        for (JavaEnv.Jdk j : JavaEnv.list()) {
+            javaCombo.addItem(j);
+            if (sel != null && sel.home.getAbsolutePath().equals(j.home.getAbsolutePath())) {
+                selItem = j;
+            }
+        }
+        if (selItem != null) {
+            javaCombo.setSelectedItem(selItem);
+        } else {
+            javaCombo.setSelectedIndex(0);
+        }
+        javaHint.setText(JavaEnv.list().isEmpty()
+                ? "还没检测到可用的 Java，点「重新检测」再试一次"
+                : "已检测到 " + JavaEnv.list().size() + " 个可用 Java（每个都实际跑过 java -version 验证）");
+    }
+
+    /** 重新扫描本机 Java（要跑多次 java -version，放到后台线程） */
+    private void redetect(final RoundButton button) {
+        final String oldText = button.getText();
+        button.setText("检测中…");
+        button.setEnabled(false);
+        new Thread(new Runnable() {
+            public void run() {
+                JavaEnv.detect();
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        fillJava();
+                        button.setText(oldText);
+                        button.setEnabled(true);
+                    }
+                });
+            }
+        }).start();
     }
 
     private void loadItems() {
@@ -127,6 +211,9 @@ public class SettingsDialog extends JDialog {
     }
 
     private void apply() {
+        Object jv = javaCombo.getSelectedItem();
+        JavaEnv.select(jv instanceof JavaEnv.Jdk ? (JavaEnv.Jdk) jv : null);
+
         Object sel = combo.getSelectedItem();
         File file = sel instanceof Item ? ((Item) sel).file : null;
         try {

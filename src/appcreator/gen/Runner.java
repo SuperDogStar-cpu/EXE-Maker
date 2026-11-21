@@ -113,7 +113,12 @@ public final class Runner {
                 Files.write(dir.resolve("appicon.png"), project.iconPng);
             }
 
-            ProcessBuilder javac = new ProcessBuilder("javac", "-encoding", "UTF-8",
+            File javacTool = JavaEnv.tool("javac");
+            File javaTool = JavaEnv.tool("java");
+            if (javacTool == null || javaTool == null) {
+                return "没找到 javac：请在「设置 → Java」里选一个完整 JDK。";
+            }
+            ProcessBuilder javac = new ProcessBuilder(javacTool.getAbsolutePath(), "-encoding", "UTF-8",
                     "-d", dir.toString(), srcFile.toString());
             javac.redirectErrorStream(true);
             Process p1 = javac.start();
@@ -122,7 +127,7 @@ public final class Runner {
                 return "编译失败（未找到内置编译器，请确认已安装 JDK）：\n" + out1;
             }
 
-            ProcessBuilder java = new ProcessBuilder("java", "-Dappcreator.preview=true",
+            ProcessBuilder java = new ProcessBuilder(javaTool.getAbsolutePath(), "-Dappcreator.preview=true",
                     "-cp", dir.toString(), "AppMain");
             java.redirectErrorStream(true);
             Process p2 = java.start();

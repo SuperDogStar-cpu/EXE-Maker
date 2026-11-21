@@ -1,5 +1,26 @@
 # 更新日志
 
+## v1.4 — 2026-11-21
+
+设置里新增 **Java 选择**：自动识别本机所有 Java 版本并逐个验证是否可用，启动软件时先停在检测界面，识别完才进入主界面。
+
+### 新增功能
+
+- **设置 → Java 下拉框**：列出本机检测到的所有 Java，默认「自动（跟随当前运行环境）」。每一项显示成 `Java 21.0.12（JDK · 当前运行）`，鼠标悬停可看完整安装路径。
+- **自动检测 + 真实验证**：候选来源包括当前运行环境、`JAVA_HOME`、`PATH`，以及 `Program Files` 下的 Eclipse Adoptium / AdoptOpenJDK / Zulu / Microsoft / BellSoft / Corretto / Semeru / ojdkbuild、`%LOCALAPPDATA%\Programs`、`%LOCALAPPDATA%\Java`、`~/tools`、`~/.jdks`、`~/scoop/apps`（Linux / macOS 还有 `/usr/lib/jvm`、`/opt` 等）。每个候选都会实际执行一次 `java -version`，跑不通的不进列表。
+- **重新检测**：一键重新扫描，检测在后台线程进行，界面不卡；检测完自动回填列表并保留原来选中的那一项。
+- **启动停留**：打开创作器先显示「正在检测本机 Java 版本并验证是否可用…」小窗口，检测跑完才打开主界面，进来时列表已经就绪。
+- **选择会记住**：选中的 JDK 记在用户目录的 `应用创作器.java.properties`，下次启动直接复用。
+
+### 改进
+
+- 「导出 EXE」的 `jpackage`、「运行预览」外部编译回退用的 `javac` / `java`，都改为使用设置里选中的 JDK 的绝对路径；没选或选到纯 JRE 时自动退回当前运行的 JDK，缺工具时的提示改为引导去「设置 → Java」换一个完整 JDK。
+
+### 截图
+
+- `preview_settings.png` — 设置窗口（语言 + Java 下拉框、重新检测）
+- `preview_splash.png` — 启动时的 Java 检测窗口
+
 ## v1.3 — 2026-11-21
 
 代码编辑器按钮改成深底浅字，全界面字体统一（英文 Consolas / 汉字黑体），主界面新增「设置」可以切换界面语言，并支持用 `.japa` 语言包替换内置文字。
