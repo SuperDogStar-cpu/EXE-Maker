@@ -55,3 +55,8 @@
 语言=Language
 取消=Cancel
 确定=OK
+就绪 · 把左侧组件拖到画布上开始设计=Ready · drag a component from the left onto the canvas
+在画布中选中一个组件，即可在此编辑属性=Select a widget on the canvas to edit its properties here
+拖到画布中放置，或双击直接添加=Drag onto canvas, or double-click to add
+导入 .japa=Import .japa
+重新检测=Re-detect

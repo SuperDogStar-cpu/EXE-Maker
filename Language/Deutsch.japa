@@ -4,11 +4,11 @@
 新建=Neu
 打开=Öffnen
 保存=Speichern
-导出 Java=Java exportieren
-导出 EXE=EXE exportieren
-删除组件=Element löschen
-模拟窗口=Fenster-Vorschau
-运行预览=Vorschau starten
+导出 Java=Java-Export
+导出 EXE=EXE-Export
+删除组件=Löschen
+模拟窗口=Fenster
+运行预览=Vorschau
 设置=Einstellungen
 组件库=Komponenten
 拖到画布中放置=Auf die Fläche ziehen
@@ -55,3 +55,8 @@
 语言=Sprache
 取消=Abbrechen
 确定=OK
+就绪 · 把左侧组件拖到画布上开始设计=Bereit · Elemente von links auf die Fläche ziehen
+在画布中选中一个组件，即可在此编辑属性=Element auf der Fläche auswählen, um hier Eigenschaften zu bearbeiten
+拖到画布中放置，或双击直接添加=Auf die Fläche ziehen oder doppelklicken zum Hinzufügen
+导入 .japa=.japa importieren
+重新检测=Neu erkennen

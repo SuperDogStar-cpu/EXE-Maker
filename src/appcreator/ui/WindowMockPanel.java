@@ -142,7 +142,7 @@ public class WindowMockPanel extends JPanel {
 
         // 标题（超出宽度时截断）
         String title = project.title == null ? "" : project.title;
-        g2.setFont(Theme.ui(12, Font.BOLD));
+        g2.setFont(new Font(Fonts.familyForText(title), Font.BOLD, 12));
         FontMetrics fm = g2.getFontMetrics();
         int avail = fw - 190;
         String shown = title;
@@ -179,7 +179,7 @@ public class WindowMockPanel extends JPanel {
         // 底部说明
         String caption = "窗口 " + project.width + " × " + project.height
                 + " · 预览时居中显示";
-        g2.setFont(Theme.ui(11));
+        g2.setFont(new Font(Fonts.familyForText(caption), Font.PLAIN, 11));
         g2.setColor(Theme.MUTED);
         g2.drawString(caption, fx + 2, fy + fh + 16);
 

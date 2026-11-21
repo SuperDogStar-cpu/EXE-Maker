@@ -499,15 +499,15 @@ public class CodeEditor extends JPanel {
         StyledDocument doc = text.getStyledDocument();
         int i = 0;
         while (i < len) {
-            boolean cjk = Fonts.isCjk(src.charAt(i));
+            boolean wide = Fonts.isCjk(src.charAt(i)) || src.charAt(i) >= 0x80;
             Color color = foregroundAt(doc, i);
             int end = i + 1;
-            while (end < len && Fonts.isCjk(src.charAt(end)) == cjk
+            while (end < len && (Fonts.isCjk(src.charAt(end)) || src.charAt(end) >= 0x80) == wide
                     && sameColor(foregroundAt(doc, end), color)) {
                 end++;
             }
             SimpleAttributeSet attrs = new SimpleAttributeSet(doc.getCharacterElement(i).getAttributes());
-            StyleConstants.setFontFamily(attrs, cjk ? Theme.CJK_FAMILY : Theme.MONO_FAMILY);
+            StyleConstants.setFontFamily(attrs, wide ? Theme.uiFamily() : Theme.MONO_FAMILY);
             StyleConstants.setFontSize(attrs, CODE_SIZE);
             doc.setCharacterAttributes(i, end - i, attrs, false);
             i = end;

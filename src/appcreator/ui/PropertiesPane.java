@@ -65,7 +65,14 @@ public class PropertiesPane extends JPanel {
         setBackground(Theme.BG);
         setLayout(new BorderLayout());
 
-        JPanel content = new JPanel();
+        // 面板宽度上限：德语、法语这类长标签不会把整个属性面板撑出窗口
+        JPanel content = new JPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                return new Dimension(Math.min(d.width, 296), d.height);
+            }
+        };
         content.setOpaque(true);
         content.setBackground(Theme.BG);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -686,7 +693,7 @@ public class PropertiesPane extends JPanel {
 
             String txt = color == null ? "默认" : String.format("#%06X", color.getRGB() & 0xFFFFFF);
             g2.setColor(isEnabled() ? Theme.TEXT : Theme.MUTED);
-            g2.setFont(Fonts.hasCjk(txt) ? Theme.ui(11) : Theme.mono(11));
+            g2.setFont(new Font(Fonts.familyForText(txt), Font.PLAIN, 11));
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(txt, sx + sw + 7, (h - fm.getHeight()) / 2 + fm.getAscent());
             g2.dispose();

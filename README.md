@@ -53,7 +53,8 @@
 
 - **格式**：UTF-8 纯文本，一行一条「原文=译文」，`#` 开头是注释，`#name=English` 用来指定语言在设置里显示的名字；文件名随便取（程序认的是 `.japa` 后缀，不会改你的文件名）。
 - **放哪里**：程序目录、用户目录、当前项目目录，以及它们下面的 `Language` 文件夹里的语言包都会被自动发现，列在设置的下拉框里；也可以在设置里点「导入 .japa」直接挑文件。
-- **自带 28 国语言**：项目里的 `Language` 文件夹已经放好 28 个语言包（English、繁體中文、日本語、한국어、Deutsch、Français、Español、Português、Italiano、Nederlands、Polski、Čeština、Magyar、Română、Türkçe、Ελληνικά、Русский、Українська、Svenska、Norsk、Suomi、Dansk、العربية、हिन्दी、ไทย、Tiếng Việt、Bahasa Indonesia、Bahasa Melayu），每个都是完整的 55 条界面文字。
+- **自带 6 国语言**：项目里的 `Language` 文件夹已经放好 6 个语言包（English、繁體中文、日本語、한국어、Deutsch、Français），简体中文是内置默认，不需要语言包。每个包都覆盖工具栏、组件库、属性面板、代码编辑器标签、设置按钮和状态栏提示。
+- **字形自动匹配**：汉字走黑体，韩文走 Malgun Gothic，日文走游明朝体，其他语言依次回退 Microsoft YaHei / Segoe UI，切语言后不会再出现整屏方框；德语、法语这种长文字会把工具栏按钮自动缩小，属性面板标签超长显示省略号、悬停看全文。
 - **怎么生效**：点确定后，界面上所有能对上的内置文字（按钮、标签、属性名、组件库、代码编辑器里的标签等）立刻换成译文，字体也会跟着重新挑（英文 Consolas、汉字黑体）；没写到的文字保持原样。
 - 切回「简体中文（内置）」即可恢复原样；语言选择会记在用户目录的设置文件里，下次启动自动加载。
 
@@ -135,7 +136,7 @@ Java应用创作器/
 ├─ preview_code.png         界面截图（代码编辑器「完整源码（可改）」页）
 ├─ preview_settings.png     界面截图（设置 · 语言选择）
 ├─ preview_settings_ui.png  界面截图（English.japa 生效后的主界面）
-├─ Language/                28 国语言包（English.japa、日本語.japa、العربية.japa …）
+├─ Language/                6 国语言包（English.japa、日本語.japa、한국어.japa …）
 ├─ preview_logic_dark.png   界面截图（深色代码编辑器，含错误波浪线）
 ├─ preview_complete.png     界面截图（代码补全候选框）
 ├─ preview_splash.png       界面截图（启动时的 Java 检测窗口）

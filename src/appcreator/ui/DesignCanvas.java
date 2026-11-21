@@ -85,9 +85,9 @@ public class DesignCanvas extends JLayeredPane {
             g2.fillRect(selected.x + selected.w - 1, selected.y, 1, selected.h);
 
             // 组件名字标签
-            g2.setFont(Theme.ui(11));
-            FontMetrics fm = g2.getFontMetrics();
             String tag = selected.name;
+            g2.setFont(new Font(Fonts.familyForText(tag), Font.PLAIN, 11));
+            FontMetrics fm = g2.getFontMetrics();
             int tw = fm.stringWidth(tag) + 10;
             int ty = selected.y - 20;
             if (ty < 0) {

@@ -23,6 +23,19 @@ public final class Theme {
     public static final String MONO_FAMILY = "Consolas";
     public static final String CJK_FAMILY = "黑体";
 
+    /** 界面里「非英文」文字的字体；换语言时由 Fonts 按该语言的字形重新挑 */
+    private static String uiFamily = CJK_FAMILY;
+
+    public static String uiFamily() {
+        return uiFamily;
+    }
+
+    public static void setUiFamily(String family) {
+        if (family != null && family.length() > 0) {
+            uiFamily = family;
+        }
+    }
+
     private Theme() {
     }
 
@@ -31,7 +44,7 @@ public final class Theme {
     }
 
     public static Font ui(int size, int style) {
-        return new Font(CJK_FAMILY, style, size);
+        return new Font(uiFamily, style, size);
     }
 
     /** 等宽字体：英文 / 代码用 Consolas */
@@ -58,13 +71,28 @@ public final class Theme {
         return f;
     }
 
-    /** 左侧标签列：固定一列宽度（够放英文 Background / Foreground），切语言后英文也不会被截断 */
+    /** 左侧标签列：固定一列宽度，长语言（德语 Schriftgröße 之类）不会把整个面板撑宽 */
     public static JLabel autoLabel(String text, int size, Color color) {
         JLabel l = new JLabel(text) {
             @Override
             public Dimension getPreferredSize() {
-                Dimension d = super.getPreferredSize();
-                return new Dimension(Math.max(LABEL_COLUMN, d.width), 24);
+                return new Dimension(LABEL_COLUMN, 24);
+            }
+
+            @Override
+            public Dimension getMinimumSize() {
+                return new Dimension(LABEL_COLUMN, 24);
+            }
+
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(LABEL_COLUMN, 24);
+            }
+
+            @Override
+            public void setText(String t) {
+                super.setText(t);
+                setToolTipText(t == null || t.length() == 0 ? null : t);
             }
         };
         l.setFont(ui(size));

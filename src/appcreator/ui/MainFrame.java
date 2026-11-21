@@ -232,7 +232,75 @@ public class MainFrame extends JFrame {
             }
         }));
         bar.add(actions, BorderLayout.EAST);
+        final JPanel topBar = bar;
+        bar.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                fitActions(topBar, titles, actions);
+            }
+
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                fitActions(topBar, titles, actions);
+            }
+        });
+        javax.swing.SwingUtilities.invokeLater(() -> fitActions(topBar, titles, actions));
         return bar;
+    }
+
+    /** 语言变长（德语、法语）时按钮会顶到标题上：按剩余宽度等比缩小按钮字号 */
+    private void fitActions(JPanel bar, JComponent titles, JPanel actions) {
+        Insets in = bar.getInsets();
+        int avail = bar.getWidth() - in.left - in.right - 20 - titles.getPreferredSize().width;
+        if (avail <= 0 || actions.getComponentCount() == 0) {
+            return;
+        }
+        // 用基础字号（13）量一遍每个按钮需要的宽度
+        int need = 0;
+        Font base = null;
+        for (Component c : actions.getComponents()) {
+            if (!(c instanceof JButton)) {
+                continue;
+            }
+            JButton b = (JButton) c;
+            Font bf = (Font) b.getClientProperty("appcreator.baseFont");
+            if (bf == null) {
+                bf = b.getFont();
+                b.putClientProperty("appcreator.baseFont", bf);
+            }
+            if (base == null) {
+                base = bf;
+            }
+            int tw = b.getFontMetrics(bf.deriveFont(13f)).stringWidth(b.getText() == null ? "" : b.getText());
+            need += tw + 34 + 7;
+        }
+        if (need <= 0) {
+            return;
+        }
+        int size = 13;
+        if (need > avail) {
+            size = Math.max(9, (int) Math.floor(13.0 * avail / need));
+        }
+        boolean changed = false;
+        for (Component c : actions.getComponents()) {
+            if (!(c instanceof JButton)) {
+                continue;
+            }
+            JButton b = (JButton) c;
+            Font bf = (Font) b.getClientProperty("appcreator.baseFont");
+            if (bf == null) {
+                continue;
+            }
+            if (b.getFont() == null || b.getFont().getSize() != size) {
+                b.setFont(bf.deriveFont((float) size));
+                changed = true;
+            }
+        }
+        if (changed) {
+            actions.revalidate();
+            actions.repaint();
+            bar.repaint();
+        }
     }
 
     private void toggleMock() {
