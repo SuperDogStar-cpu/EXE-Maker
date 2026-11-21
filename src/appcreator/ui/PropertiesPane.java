@@ -695,7 +695,7 @@ public class PropertiesPane extends JPanel {
             g2.setColor(isEnabled() ? Theme.TEXT : Theme.MUTED);
             g2.setFont(new Font(Fonts.familyForText(txt), Font.PLAIN, 11));
             FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(txt, sx + sw + 7, (h - fm.getHeight()) / 2 + fm.getAscent());
+            Fonts.draw(g2, txt, sx + sw + 7, (h - fm.getHeight()) / 2 + fm.getAscent(), Font.PLAIN, 11);
             g2.dispose();
         }
     }

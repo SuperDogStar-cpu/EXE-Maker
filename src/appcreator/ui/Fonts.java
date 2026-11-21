@@ -22,12 +22,15 @@ public final class Fonts {
 
     /** 非英文文字的候选字体，按顺序挑第一款能显示当前语言全部字形的 */
     private static final String[] UI_CANDIDATES = {
-            Theme.CJK_FAMILY, "Microsoft YaHei", "Yu Gothic UI", "Meiryo UI", "Malgun Gothic",
-            "Nirmala UI", "Leelawadee UI", "Segoe UI", "Arial Unicode MS", "Dialog"
+            Theme.CJK_FAMILY, "Microsoft YaHei", "Yu Gothic UI", "Meiryo UI", "MS Gothic",
+            "Malgun Gothic", "SimSun", "Nirmala UI", "Leelawadee UI",
+            "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "Dialog"
     };
 
     private static final Map<String, Font> PROBES = new HashMap<String, Font>();
     private static final Map<String, String> TEXT_FAMILY = new HashMap<String, String>();
+    /** 单个字符 → 能显示它的字体家族（换字体兜底用） */
+    private static final Map<Integer, String> CHAR_FAMILY = new HashMap<Integer, String>();
 
     private Fonts() {
     }
@@ -81,6 +84,7 @@ public final class Fonts {
         String family = familyForText(sample.toString());
         Theme.setUiFamily(family);
         TEXT_FAMILY.clear();
+        CHAR_FAMILY.clear();
     }
 
     private static void applyTree(Component root) {
@@ -127,7 +131,7 @@ public final class Fonts {
         if (!hasNonAscii(text)) {
             family = Theme.MONO_FAMILY;
         } else {
-            family = firstDisplayable(text);
+            family = bestDisplayable(text);
         }
         if (TEXT_FAMILY.size() > 4000) {
             TEXT_FAMILY.clear();
@@ -136,32 +140,167 @@ public final class Fonts {
         return family;
     }
 
-    /** 按顺序找第一款能显示 text 里所有非 ASCII 字符的字体 */
-    private static String firstDisplayable(String text) {
+    /**
+     * 单个字符用哪款字体：ASCII 走 Consolas，其余挑第一款能显示这个字形的字体。
+     * 属于某个字体显示不了的字，就换成别的能显示的字体——这样不会出现空白方框。
+     */
+    public static String familyForChar(int codePoint) {
+        if (codePoint < 0x80) {
+            return Theme.MONO_FAMILY;
+        }
+        if (Character.isISOControl(codePoint)) {
+            return Theme.MONO_FAMILY;
+        }
+        String cached = CHAR_FAMILY.get(codePoint);
+        if (cached != null) {
+            return cached;
+        }
+        String family = null;
+        for (String cand : UI_CANDIDATES) {
+            if (canDisplay(cand, codePoint)) {
+                family = cand;
+                break;
+            }
+        }
+        if (family == null) {
+            family = "Dialog";
+        }
+        if (CHAR_FAMILY.size() > 20000) {
+            CHAR_FAMILY.clear();
+        }
+        CHAR_FAMILY.put(codePoint, family);
+        return family;
+    }
+
+    /** 按字体把文字分段（每段一个字体系列），逐段换字体绘制 */
+    private static void drawRuns(Graphics2D g2, String text, int x, int y, int style, int size) {
+        if (text == null || text.length() == 0) {
+            return;
+        }
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            int len = Character.charCount(cp);
+            String family = familyForChar(cp);
+            Font f = new Font(family, style, size);
+            g2.setFont(f);
+            FontMetrics fm = g2.getFontMetrics(f);
+            int start = i;
+            i += len;
+            // 继续吃同一字体的后续字符
+            while (i < text.length()) {
+                int cp2 = text.codePointAt(i);
+                if (!family.equals(familyForChar(cp2))) {
+                    break;
+                }
+                i += Character.charCount(cp2);
+            }
+            String piece = text.substring(start, i);
+            g2.drawString(piece, x, y);
+            x += fm.stringWidth(piece);
+        }
+    }
+
+    /** 用当前的字体粗细、字号逐段绘制文字（缺字形自动换字体） */
+    public static void draw(Graphics2D g2, String text, int x, int y) {
+        Font cur = g2.getFont();
+        drawRuns(g2, text, x, y, cur.getStyle(), cur.getSize());
+    }
+
+    /** 指定粗细和字号逐段绘制文字（缺字形自动换字体） */
+    public static void draw(Graphics2D g2, String text, int x, int y, int style, int size) {
+        drawRuns(g2, text, x, y, style, size);
+    }
+
+    /** 逐段测量文字宽度（和 {@link #draw} 的排版一致） */
+    public static int width(Graphics2D g2, String text) {
+        if (text == null || text.length() == 0) {
+            return 0;
+        }
+        Font cur = g2.getFont();
+        int w = 0;
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            String family = familyForChar(cp);
+            int start = i;
+            i += Character.charCount(cp);
+            while (i < text.length()) {
+                int cp2 = text.codePointAt(i);
+                if (!family.equals(familyForChar(cp2))) {
+                    break;
+                }
+                i += Character.charCount(cp2);
+            }
+            Font f = new Font(family, cur.getStyle(), cur.getSize());
+            w += g2.getFontMetrics(f).stringWidth(text.substring(start, i));
+        }
+        return w;
+    }
+
+    /** 按顺序找第一款能显示 text 里所有非 ASCII 字符的字体，都不行就挑覆盖最多的那款 */
+    private static String bestDisplayable(String text) {
         for (String family : UI_CANDIDATES) {
             if (canDisplayAll(family, text)) {
                 return family;
             }
         }
-        return "Dialog";
+        String best = "Dialog";
+        int bestScore = -1;
+        for (String family : UI_CANDIDATES) {
+            int score = countDisplayable(family, text);
+            if (score > bestScore) {
+                bestScore = score;
+                best = family;
+            }
+        }
+        return best;
     }
 
     private static boolean canDisplayAll(String family, String text) {
+        Font probe = probe(family);
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            if (cp < 0x80 || Character.isISOControl(cp)) {
+                continue;
+            }
+            if (!probe.canDisplay(cp)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int countDisplayable(String family, String text) {
+        Font probe = probe(family);
+        int n = 0;
+        int i = 0;
+        while (i < text.length()) {
+            int cp = text.codePointAt(i);
+            i += Character.charCount(cp);
+            if (cp < 0x80 || Character.isISOControl(cp)) {
+                continue;
+            }
+            if (probe.canDisplay(cp)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static boolean canDisplay(String family, int codePoint) {
+        return probe(family).canDisplay(codePoint);
+    }
+
+    private static Font probe(String family) {
         Font probe = PROBES.get(family);
         if (probe == null) {
             probe = new Font(family, Font.PLAIN, 14);
             PROBES.put(family, probe);
         }
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c < 0x80 || Character.isISOControl(c)) {
-                continue;
-            }
-            if (!probe.canDisplay(c)) {
-                return false;
-            }
-        }
-        return true;
+        return probe;
     }
 
     /** 文字后面还会变（属性面板的值、状态文字等），变了就重新挑字体 */

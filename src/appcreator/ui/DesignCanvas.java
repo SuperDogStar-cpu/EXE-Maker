@@ -87,8 +87,7 @@ public class DesignCanvas extends JLayeredPane {
             // 组件名字标签
             String tag = selected.name;
             g2.setFont(new Font(Fonts.familyForText(tag), Font.PLAIN, 11));
-            FontMetrics fm = g2.getFontMetrics();
-            int tw = fm.stringWidth(tag) + 10;
+            int tw = Fonts.width(g2, tag) + 10;
             int ty = selected.y - 20;
             if (ty < 0) {
                 ty = selected.y + 3;
@@ -96,7 +95,7 @@ public class DesignCanvas extends JLayeredPane {
             g2.setColor(new Color(0x22, 0x31, 0x2E, 200));
             g2.fillRoundRect(selected.x, ty, tw, 17, 8, 8);
             g2.setColor(Color.WHITE);
-            g2.drawString(tag, selected.x + 5, ty + 12);
+            Fonts.draw(g2, tag, selected.x + 5, ty + 12);
 
             // 八个缩放手柄
             for (Rectangle r : handles(selected)) {

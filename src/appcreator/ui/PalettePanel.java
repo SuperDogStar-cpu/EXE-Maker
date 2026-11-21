@@ -163,15 +163,16 @@ public class PalettePanel extends JPanel {
             g2.setColor(Color.WHITE);
             String ch = String.valueOf(glyph);
             g2.setFont(new Font(Fonts.familyForText(ch), Font.BOLD, 12));
+            int cw = Fonts.width(g2, ch);
             FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(ch, ix + (s - fm.stringWidth(ch)) / 2,
-                    iy + (s - fm.getHeight()) / 2 + fm.getAscent());
+            Fonts.draw(g2, ch, ix + (s - cw) / 2,
+                    iy + (s - fm.getHeight()) / 2 + fm.getAscent(), Font.BOLD, 12);
 
             String label = Lang.t(type);
             g2.setFont(new Font(Fonts.familyForText(label), Font.PLAIN, 13));
             FontMetrics tm = g2.getFontMetrics();
             g2.setColor(Theme.TEXT);
-            g2.drawString(label, ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent());
+            Fonts.draw(g2, label, ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent(), Font.PLAIN, 13);
             g2.dispose();
         }
     }

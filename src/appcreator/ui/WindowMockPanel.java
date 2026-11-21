@@ -146,11 +146,11 @@ public class WindowMockPanel extends JPanel {
         FontMetrics fm = g2.getFontMetrics();
         int avail = fw - 190;
         String shown = title;
-        while (fm.stringWidth(shown) > avail && shown.length() > 1) {
+        while (Fonts.width(g2, shown) > avail && shown.length() > 1) {
             shown = shown.substring(0, shown.length() - 1);
         }
         g2.setColor(TITLE_ACTIVE);
-        g2.drawString(shown, fx + 36, fy + (TITLE_H - fm.getHeight()) / 2 + fm.getAscent());
+        Fonts.draw(g2, shown, fx + 36, fy + (TITLE_H - fm.getHeight()) / 2 + fm.getAscent(), Font.BOLD, 12);
 
         // 尺寸提示
         String size = project.width + " × " + project.height;
@@ -181,7 +181,7 @@ public class WindowMockPanel extends JPanel {
                 + " · 预览时居中显示";
         g2.setFont(new Font(Fonts.familyForText(caption), Font.PLAIN, 11));
         g2.setColor(Theme.MUTED);
-        g2.drawString(caption, fx + 2, fy + fh + 16);
+        Fonts.draw(g2, caption, fx + 2, fy + fh + 16, Font.PLAIN, 11);
 
         g2.dispose();
     }
