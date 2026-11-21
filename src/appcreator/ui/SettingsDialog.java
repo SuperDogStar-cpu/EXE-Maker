@@ -20,15 +20,17 @@ public class SettingsDialog extends JDialog {
     private final Runnable onApplied;
 
     public SettingsDialog(JFrame owner, Runnable onApplied) {
-        super(owner, "设置", true);
+        super(owner, Lang.t("设置"), true);
         this.onApplied = onApplied;
+        // 先按当前语言把字体挑好，下面所有控件（含自绘文字）才能用对字体
+        Fonts.syncLanguage();
 
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBackground(Theme.BG);
         root.setBorder(new EmptyBorder(16, 18, 14, 18));
         setContentPane(root);
 
-        JLabel title = new JLabel("设置");
+        JLabel title = new JLabel(Lang.t("设置"));
         title.setFont(Theme.ui(15, Font.BOLD));
         title.setForeground(Theme.ACCENT_DARK);
         root.add(title, BorderLayout.NORTH);
@@ -38,11 +40,23 @@ public class SettingsDialog extends JDialog {
 
         JPanel langRow = new JPanel(new BorderLayout(10, 0));
         langRow.setOpaque(false);
-        langRow.add(new JLabel("语言"), BorderLayout.WEST);
+        langRow.add(new JLabel(Lang.t("语言")), BorderLayout.WEST);
         combo.setFont(Theme.ui(12));
         combo.setPreferredSize(new Dimension(260, 30));
+        // 下拉项里是各语言的自称名（日本語 / 한국어 / Français …），按名称挑一款能显示它的字体
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                    boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                String text = value == null ? "" : value.toString();
+                setText(text);
+                setFont(new Font(Fonts.familyForText(text), Font.PLAIN, 12));
+                return this;
+            }
+        });
         langRow.add(combo, BorderLayout.CENTER);
-        RoundButton browse = new RoundButton("导入 .japa", Theme.SOFT, Theme.ACCENT_DARK);
+        RoundButton browse = new RoundButton(Lang.t("导入 .japa"), Theme.SOFT, Theme.ACCENT_DARK);
         browse.setBorder(new EmptyBorder(6, 12, 6, 12));
         browse.addActionListener(e -> choosePack());
         langRow.add(browse, BorderLayout.EAST);
@@ -64,14 +78,15 @@ public class SettingsDialog extends JDialog {
                     setText(j.title());
                     setToolTipText(j.detail());
                 } else {
-                    setText("自动（跟随当前运行环境）");
-                    setToolTipText("不指定，直接用启动创作器的那个 Java");
+                    setText(Lang.t("自动（跟随当前运行环境）"));
+                    setToolTipText(Lang.t("不指定，直接用启动创作器的那个 Java"));
                 }
+                setFont(new Font(Fonts.familyForText(getText()), Font.PLAIN, 12));
                 return this;
             }
         });
         javaRow.add(javaCombo, BorderLayout.CENTER);
-        RoundButton redetect = new RoundButton("重新检测", Theme.SOFT, Theme.ACCENT_DARK);
+        RoundButton redetect = new RoundButton(Lang.t("重新检测"), Theme.SOFT, Theme.ACCENT_DARK);
         redetect.setBorder(new EmptyBorder(6, 12, 6, 12));
         redetect.addActionListener(e -> redetect(redetect));
         javaRow.add(redetect, BorderLayout.EAST);
@@ -84,6 +99,7 @@ public class SettingsDialog extends JDialog {
         javaHint.setFont(Theme.ui(11));
         javaHint.setForeground(Theme.MUTED);
         javaHint.setBorder(new EmptyBorder(4, 34, 0, 0));
+        javaHint.setAlignmentX(Component.LEFT_ALIGNMENT);
         rows.add(javaHint);
         body.add(rows, BorderLayout.NORTH);
 
@@ -93,16 +109,20 @@ public class SettingsDialog extends JDialog {
         tip.setForeground(Theme.MUTED);
         tip.setBackground(Theme.CARD);
         tip.setBorder(new EmptyBorder(10, 12, 10, 12));
-        tip.setText("语言包是 UTF-8 文本，扩展名 .japa，一行一条「原文=译文」：\n"
+        tip.setText(Lang.t("语言包是 UTF-8 文本，扩展名 .japa，一行一条「原文 → 译文」：")
+                + "\n"
                 + "\n"
                 + "  #name=English\n"
-                + "  组件库=Palette\n"
-                + "  新建=New\n"
+                + "  Palette=Components\n"
+                + "  Button=Button\n"
                 + "\n"
-                + "文件名随便取，认的是 .japa 后缀；程序目录、用户目录、\n"
-                + "当前项目目录以及它们下面的 Language 文件夹里放的语言包，\n"
-                + "都会自动列在上面的下拉框里。\n"
-                + "译文会替换内置界面文字，没写到的保持原样。");
+                + Lang.t("文件名随便取，认的是 .japa 后缀。") + "\n"
+                + Lang.t("程序目录、用户目录、当前项目目录以及它们下面的 Language 文件夹，") + "\n"
+                + Lang.t("里面放的语言包都会自动列在上面的下拉框里。") + "\n"
+                + Lang.t("译文会替换内置界面文字，没写到的保持原样。"));
+        tip.setLineWrap(true);
+        tip.setWrapStyleWord(true);
+        tip.setFont(new Font(Fonts.familyForText(tip.getText()), Font.PLAIN, 12));
         tip.setRows(9);
         JScrollPane sp = new JScrollPane(tip);
         sp.setBorder(new RoundBorder(8, Theme.BORDER));
@@ -111,10 +131,10 @@ public class SettingsDialog extends JDialog {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        RoundButton cancel = new RoundButton("取消", Theme.SOFT, Theme.ACCENT_DARK);
+        RoundButton cancel = new RoundButton(Lang.t("取消"), Theme.SOFT, Theme.ACCENT_DARK);
         cancel.setBorder(new EmptyBorder(6, 16, 6, 16));
         cancel.addActionListener(e -> dispose());
-        RoundButton ok = new RoundButton("确定", Theme.ACCENT, Color.WHITE);
+        RoundButton ok = new RoundButton(Lang.t("确定"), Theme.ACCENT, Color.WHITE);
         ok.setBorder(new EmptyBorder(6, 16, 6, 16));
         ok.addActionListener(e -> apply());
         actions.add(cancel);
@@ -123,14 +143,16 @@ public class SettingsDialog extends JDialog {
 
         loadItems();
         fillJava();
+        // 和主界面同步：按当前语言重挑字体，再按每个控件文字逐字兜底
+        Lang.applyTree(getContentPane());
+        Fonts.apply(getContentPane());
         pack();
         setSize(Math.max(560, getWidth()), Math.max(470, getHeight()));
         setLocationRelativeTo(owner);
     }
 
     /** 把检测到的 Java 填进下拉框，保留当前选择 */
-    private void fillJava() {
-        javaCombo.removeAllItems();
+    private void fillJava() {        javaCombo.removeAllItems();
         javaCombo.addItem("自动");
         JavaEnv.Jdk sel = JavaEnv.selected();
         JavaEnv.Jdk selItem = null;
@@ -146,8 +168,9 @@ public class SettingsDialog extends JDialog {
             javaCombo.setSelectedIndex(0);
         }
         javaHint.setText(JavaEnv.list().isEmpty()
-                ? "还没检测到可用的 Java，点「重新检测」再试一次"
-                : "已检测到 " + JavaEnv.list().size() + " 个可用 Java（每个都实际跑过 java -version 验证）");
+                ? Lang.t("还没检测到可用的 Java，点「重新检测」再试一次")
+                : Lang.t("已检测到 %d 个可用 Java（已用 java -version 验证）")
+                        .replace("%d", String.valueOf(JavaEnv.list().size())));
     }
 
     /** 重新扫描本机 Java（要跑多次 java -version，放到后台线程） */
@@ -171,7 +194,7 @@ public class SettingsDialog extends JDialog {
 
     private void loadItems() {
         combo.removeAllItems();
-        combo.addItem(new Item(Lang.DEFAULT_NAME, null));
+        combo.addItem(new Item(Lang.t("简体中文（内置）"), null));
         List<File> packs = Lang.discover();
         File current = Lang.file();
         Item selected = null;
@@ -250,7 +273,7 @@ public class SettingsDialog extends JDialog {
 
         @Override
         public String toString() {
-            return file == null ? name + "（内置）" : name + "  ·  " + file.getName();
+            return file == null ? name : name + "  ·  " + file.getName();
         }
     }
 }

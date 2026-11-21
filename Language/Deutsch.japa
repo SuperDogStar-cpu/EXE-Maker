@@ -60,3 +60,13 @@
 拖到画布中放置，或双击直接添加=Auf die Fläche ziehen oder doppelklicken zum Hinzufügen
 导入 .japa=.japa importieren
 重新检测=Neu erkennen
+语言包是 UTF-8 文本，扩展名 .japa，一行一条「原文 → 译文」：=Sprachpakete sind UTF-8-Text mit der Endung .japa, eine Zeile pro "Original → Übersetzung":
+文件名随便取，认的是 .japa 后缀。=Der Dateiname ist frei wählbar, erkannt wird nur die Endung .japa.
+程序目录、用户目录、当前项目目录以及它们下面的 Language 文件夹，=Sprachpakete im Programmordner, im Benutzerordner, im aktuellen Projektordner
+里面放的语言包都会自动列在上面的下拉框里。=und in deren Language-Unterordnern erscheinen automatisch in der Liste oben.
+译文会替换内置界面文字，没写到的保持原样。=Übersetzungen ersetzen die eingebauten Texte; nicht übersetzte Texte bleiben unverändert.
+已检测到 %d 个可用 Java（已用 java -version 验证）=%d Java nutzbar (mit java -version geprüft)
+还没检测到可用的 Java，点「重新检测」再试一次=Kein nutzbares Java gefunden – bitte „Neu erkennen" erneut versuchen
+自动（跟随当前运行环境）=Automatisch (aktuelle Laufzeitumgebung)
+不指定，直接用启动创作器的那个 Java=Ohne Auswahl wird das Java verwendet, mit dem der Creator gestartet wurde
+简体中文（内置）=Vereinfachtes Chinesisch (integriert)

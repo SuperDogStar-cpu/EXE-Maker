@@ -21,10 +21,12 @@
 ### 改进
 
 - 原来放在项目根目录的 `English.japa` 移入 `Language` 文件夹，避免下拉框出现两个 English；简体中文仍是内置默认，不需要语言包。
+- **设置窗口也跟着同步**：标题、语言/Java 两行的按钮、取消/确定、语言包说明和 Java 提示都走 `.japa` 译文（6 个语言包各补了 10 条 key，包括内置的「简体中文（内置）」）；语言下拉框里每项按语言自称名单独挑字体（日本語 用日文字体、한국어 用 Malgun Gothic），下拉框和设置窗口整体也走字形兜底，不会再出现方框。语言包说明的示例改成纯 ASCII（`Palette=Components`），长语言自动折行。
 
 ### 截图
 
 - `preview_mixfont.png` — 多语言、表情符号混排时的逐字兜底效果
+- `preview_settings_ja.png` / `preview_settings_ko.png` / `preview_settings_fr.png` — 设置窗口的日 / 韩 / 法界面
 - `preview_splash_sync.png` — 启动画面「正在下载语言包…」
 - `preview_lang_ja.png` — 日本語界面
 - `preview_lang_ko.png` — 한국어 界面（谚文正常显示）
