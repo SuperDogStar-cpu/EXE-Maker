@@ -129,7 +129,7 @@ public class CodeWindow extends JDialog {
     /** 项目切换（新建/打开）时同步标题和编辑器 */
     public void refreshProject(Project project) {
         this.project = project;
-        titleLabel.setText(project == null ? "代码" : "代码 · " + project.title);
+        titleLabel.setText(project == null ? "逻辑" : "逻辑 · " + project.title);
         editor.setProject(project);
         fullEditor.setProject(project);
         customEdited = project != null && project.customCode != null
@@ -155,8 +155,18 @@ public class CodeWindow extends JDialog {
         fullWrap.add(fullEditor, BorderLayout.CENTER);
 
         tabs.setFont(Theme.ui(12));
-        tabs.addTab("代码", logicWrap);
+        tabs.addTab("逻辑", logicWrap);
         tabs.addTab("完整源码（可改）", fullWrap);
+
+        JLabel logicTab = new JLabel("逻辑");
+        logicTab.setFont(Theme.ui(12));
+        logicTab.setBorder(new EmptyBorder(4, 8, 4, 28));
+        tabs.setTabComponentAt(0, logicTab);
+
+        JLabel fullTab = new JLabel("完整源码（可改）");
+        fullTab.setFont(Theme.ui(12));
+        fullTab.setBorder(new EmptyBorder(4, 8, 4, 8));
+        tabs.setTabComponentAt(1, fullTab);
         tabs.addChangeListener(e -> {
             if (tabs.getSelectedIndex() == 1) {
                 refreshFullCode();
