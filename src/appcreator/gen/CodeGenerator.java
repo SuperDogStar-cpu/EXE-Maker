@@ -167,19 +167,32 @@ public final class CodeGenerator {
         sb.append("        root.add(").append(var).append(");\n\n");
     }
 
-    /** 图片控件：ImageIcon 按控件尺寸等比铺满 */
+    /** 图片控件：按控件尺寸等比缩放（保持原图宽高比，居中留白），放大控件图片一起放大 */
     private static void appendImage(StringBuilder sb, Widget w, String var) {
         sb.append("        JLabel ").append(var).append(" = new JLabel();\n");
         if (w.path == null || w.path.trim().isEmpty()) {
             sb.append("        ").append(var).append(".setText(\"图片（未选择）\");\n");
             sb.append("        ").append(var).append(".setHorizontalAlignment(SwingConstants.CENTER);\n");
         } else {
+            int tw = Math.max(1, w.w);
+            int th = Math.max(1, w.h);
             sb.append("        ImageIcon ").append(var).append("Icon = new ImageIcon(")
                     .append(quote(w.path)).append(");\n");
-            sb.append("        ").append(var).append(".setIcon(new ImageIcon(").append(var)
-                    .append("Icon.getImage().getScaledInstance(").append(Math.max(1, w.w)).append(", ")
-                    .append(Math.max(1, w.h)).append(", Image.SCALE_SMOOTH)));\n");
+            sb.append("        int ").append(var).append("W = ").append(var).append("Icon.getIconWidth();\n");
+            sb.append("        int ").append(var).append("H = ").append(var).append("Icon.getIconHeight();\n");
+            sb.append("        if (").append(var).append("W > 0 && ").append(var).append("H > 0) {\n");
+            sb.append("            double ").append(var).append("Scale = Math.min(")
+                    .append(tw).append(" / (double) ").append(var).append("W, ")
+                    .append(th).append(" / (double) ").append(var).append("H);\n");
+            sb.append("            ").append(var).append(".setIcon(new ImageIcon(").append(var)
+                    .append("Icon.getImage().getScaledInstance((int) Math.round(").append(var).append("W * ")
+                    .append(var).append("Scale), (int) Math.round(").append(var).append("H * ")
+                    .append(var).append("Scale), Image.SCALE_SMOOTH)));\n");
+            sb.append("        } else {\n");
+            sb.append("            ").append(var).append(".setIcon(").append(var).append("Icon);\n");
+            sb.append("        }\n");
             sb.append("        ").append(var).append(".setHorizontalAlignment(SwingConstants.CENTER);\n");
+            sb.append("        ").append(var).append(".setVerticalAlignment(SwingConstants.CENTER);\n");
         }
         sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
                 .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
@@ -192,6 +205,26 @@ public final class CodeGenerator {
         sb.append("        JLabel ").append(var).append(" = new JLabel(")
                 .append(quote("视频 · " + (name.isEmpty() ? "未选择文件" : name)))
                 .append(", SwingConstants.CENTER);\n");
+        // 播放徽标：尺寸 = 控件短边 / 3，控件放大徽标也跟着放大
+        int badge = Math.min(Math.max(1, w.w), Math.max(1, w.h)) / 3;
+        if (badge >= 14) {
+            sb.append("        {\n");
+            sb.append("            int badgeSize = Math.min(").append(Math.max(1, w.w)).append(", ")
+                    .append(Math.max(1, w.h)).append(") / 3;\n");
+            sb.append("            java.awt.image.BufferedImage badgeImg = new java.awt.image.BufferedImage(")
+                    .append("badgeSize, badgeSize, java.awt.image.BufferedImage.TYPE_INT_ARGB);\n");
+            sb.append("            Graphics2D bg = badgeImg.createGraphics();\n");
+            sb.append("            bg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);\n");
+            sb.append("            bg.setColor(new Color(0x39, 0xB5, 0x9E));\n");
+            sb.append("            int pad = badgeSize / 10;\n");
+            sb.append("            bg.fillOval(pad, pad, badgeSize - 2 * pad, badgeSize - 2 * pad);\n");
+            sb.append("            bg.setColor(Color.WHITE);\n");
+            sb.append("            bg.fillPolygon(new int[]{badgeSize * 4 / 10, badgeSize * 4 / 10, badgeSize * 68 / 100},\n");
+            sb.append("                    new int[]{badgeSize * 30 / 100, badgeSize * 70 / 100, badgeSize / 2}, 3);\n");
+            sb.append("            bg.dispose();\n");
+            sb.append("            ").append(var).append(".setIcon(new ImageIcon(badgeImg));\n");
+            sb.append("        }\n");
+        }
         sb.append("        ").append(var).append(".setOpaque(true);\n");
         sb.append("        ").append(var).append(".setBackground(new Color(0xEEF4F2));\n");
         sb.append("        ").append(var).append(".setFont(new Font(\"微软雅黑\", Font.PLAIN, ")

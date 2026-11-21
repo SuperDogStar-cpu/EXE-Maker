@@ -272,6 +272,10 @@ public class DesignCanvas extends JLayeredPane {
         JComponent c = comps.get(w);
         if (c != null) {
             c.setBounds(w.x, w.y, w.w, w.h);
+            // 图片 / 视频的资源和控件一起缩放（放大控件，图片按同比例放大，不变形）
+            if ("图片".equals(w.type) || "视频".equals(w.type)) {
+                ComponentFactory.apply(w, c);
+            }
         }
         base.repaint();
     }

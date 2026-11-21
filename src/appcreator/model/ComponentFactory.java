@@ -1,9 +1,11 @@
 package appcreator.model;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -224,6 +226,9 @@ public final class ComponentFactory {
             String name = fileName(w.path);
             JLabel video = (JLabel) c;
             video.setText("视频 · " + (name.isEmpty() ? "未选择文件" : name));
+            // 播放徽标跟控件高度一起放大缩小
+            int badge = Math.min(w.w, w.h) / 3;
+            video.setIcon(badge >= 14 ? videoBadge(badge) : null);
             video.setToolTipText(name.isEmpty() ? "在属性面板选择视频文件"
                     : "双击用系统播放器打开：" + w.path);
         } else if ("超链接".equals(w.type) && c instanceof JLabel) {
@@ -271,24 +276,108 @@ public final class ComponentFactory {
         }
     }
 
-    /** 按控件尺寸缩放图片，读不到就返回 null */
-    public static ImageIcon loadScaled(String path, int w, int h) {
+    /** 图片原图缓存：换尺寸时不用每次重新读盘（最多留 6 张） */
+    private static final java.util.Map<String, java.awt.image.BufferedImage> IMG_CACHE =
+            new java.util.LinkedHashMap<String, java.awt.image.BufferedImage>(8, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, java.awt.image.BufferedImage> e) {
+                    return size() > 6;
+                }
+            };
+
+    /** 读原图（缓存） */
+    private static java.awt.image.BufferedImage original(String path) {
         if (path == null || path.trim().isEmpty()) {
             return null;
         }
+        java.io.File f = new java.io.File(path);
+        String key = f.getAbsolutePath() + "|" + f.lastModified() + "|" + f.length();
+        synchronized (IMG_CACHE) {
+            java.awt.image.BufferedImage cached = IMG_CACHE.get(key);
+            if (cached != null) {
+                return cached;
+            }
+        }
         try {
-            ImageIcon raw = new ImageIcon(path);
-            if (raw.getIconWidth() <= 0 || raw.getIconHeight() <= 0) {
+            java.awt.image.BufferedImage img = ImageIO.read(f);
+            if (img == null) {
                 return null;
             }
-            int tw = Math.max(1, w);
-            int th = Math.max(1, h);
-            Image img = raw.getImage().getScaledInstance(tw, th, Image.SCALE_SMOOTH);
-            return new ImageIcon(img);
+            synchronized (IMG_CACHE) {
+                IMG_CACHE.put(key, img);
+            }
+            return img;
         } catch (Exception e) {
             return null;
         }
     }
+
+    /**
+     * 按控件尺寸等比缩放图片：保持原图宽高比，装满控件后在控件里居中（放大缩小都按同一比例）。
+     * 读不到就返回 null。
+     */
+    public static ImageIcon loadScaled(String path, int w, int h) {
+        java.awt.image.BufferedImage src = original(path);
+        if (src == null) {
+            return null;
+        }
+        int iw = src.getWidth();
+        int ih = src.getHeight();
+        if (iw <= 0 || ih <= 0) {
+            return null;
+        }
+        int tw = Math.max(1, w);
+        int th = Math.max(1, h);
+        double scale = Math.min((double) tw / iw, (double) th / ih);
+        int dw = Math.max(1, (int) Math.round(iw * scale));
+        int dh = Math.max(1, (int) Math.round(ih * scale));
+        if (dw == iw && dh == ih) {
+            return new ImageIcon(src);
+        }
+        java.awt.image.BufferedImage out =
+                new java.awt.image.BufferedImage(dw, dh, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(src, 0, 0, dw, dh, null);
+        g.dispose();
+        return new ImageIcon(out);
+    }
+
+    /** 视频控件的播放徽标：尺寸跟着控件走，放大控件徽标也一起放大 */
+    private static final java.util.Map<Integer, ImageIcon> BADGES =
+            new java.util.HashMap<Integer, ImageIcon>();
+
+    public static ImageIcon videoBadge(int size) {
+        int s = Math.max(10, Math.min(96, size));
+        synchronized (BADGES) {
+            ImageIcon cached = BADGES.get(s);
+            if (cached != null) {
+                return cached;
+            }
+        }
+        java.awt.image.BufferedImage out =
+                new java.awt.image.BufferedImage(s, s, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(new Color(0x39, 0xB5, 0x9E));
+        int pad = s / 10;
+        g.fillOval(pad, pad, s - 2 * pad, s - 2 * pad);
+        g.setColor(Color.WHITE);
+        int[] xs = {s * 4 / 10, s * 4 / 10, s * 68 / 100};
+        int[] ys = {s * 30 / 100, s * 70 / 100, s / 2};
+        g.fillPolygon(xs, ys, 3);
+        g.dispose();
+        ImageIcon icon = new ImageIcon(out);
+        synchronized (BADGES) {
+            BADGES.put(s, icon);
+        }
+        return icon;
+    }
+
 
     public static String fileName(String path) {
         if (path == null || path.trim().isEmpty()) {
