@@ -23,6 +23,7 @@ import javax.tools.ToolProvider;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -34,6 +35,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -92,6 +94,44 @@ public class LogicEditor extends JPanel {
     private boolean checking;
     private boolean suppressDirty;
 
+    // 自动补全
+    private static final int MAX_COMPLETIONS = 9;
+    private static final String[] API_WORDS = {
+            "System.out.println()", "System.out.print()", "System.err.println()",
+            "System.currentTimeMillis()", "System.exit()", "System.getProperty()",
+            "Math.abs()", "Math.max()", "Math.min()", "Math.round()", "Math.random()",
+            "Math.sqrt()", "Math.pow()",
+            "Integer.parseInt()", "Integer.toString()", "Double.parseDouble()",
+            "String.valueOf()", "String.format()",
+            "Thread.sleep()", "Thread.currentThread()",
+            "JOptionPane.showMessageDialog()", "JOptionPane.showInputDialog()",
+            "JOptionPane.showConfirmDialog()",
+            "JButton", "JLabel", "JTextField", "JTextArea", "JCheckBox", "JRadioButton",
+            "JComboBox", "JProgressBar", "JSlider", "JPanel", "JFrame", "JDialog",
+            "JScrollPane", "BorderLayout", "FlowLayout", "GridLayout", "BoxLayout",
+            "ActionListener", "MouseAdapter", "MouseEvent", "ActionEvent", "Timer",
+            "ArrayList", "HashMap", "LinkedHashMap", "List", "Map", "Collections",
+            "getText()", "setText()", "setEnabled()", "setVisible()", "setBackground()",
+            "setForeground()", "setFont()", "setTitle()", "setSize()", "setBounds()",
+            "setLocationRelativeTo()", "setDefaultCloseOperation()", "setEditable()",
+            "addActionListener()", "addMouseListener()", "actionPerformed()", "mouseClicked()",
+            "repaint()", "revalidate()", "dispose()", "pack()", "requestFocus()",
+            "length()", "substring()", "equals()", "equalsIgnoreCase()", "trim()",
+            "toLowerCase()", "toUpperCase()", "charAt()", "indexOf()", "replace()",
+            "split()", "isEmpty()", "contains()", "startsWith()", "endsWith()",
+            "if ()", "else if ()", "for (int i = 0; i < n; i++)", "while ()",
+            "try {", "catch (Exception e) {", "public void run()",
+            "private void onClick()", "import javax.swing.*", "import java.awt.*"
+    };
+    private final DefaultListModel<Candidate> completionModel = new DefaultListModel<Candidate>();
+    private final JList<Candidate> completionList = new JList<Candidate>(completionModel);
+    private JWindow completionWindow;
+    private JLabel completionTitle;
+    private Timer completionTimer;
+    private boolean completionVisible;
+    private boolean suppressCompletion;
+    private int completionStart = -1;
+
     private Style plain;
     private Style keyword;
     private Style control;
@@ -116,6 +156,7 @@ public class LogicEditor extends JPanel {
 
         setupStyles();
         setupKeys();
+        setupCompletion();
 
         JScrollPane sp = new JScrollPane(text);
         sp.setBorder(new javax.swing.border.LineBorder(BORDER, 1));
@@ -141,10 +182,14 @@ public class LogicEditor extends JPanel {
         text.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
                 changed();
+                if (!suppressCompletion) {
+                    scheduleCompletion();
+                }
             }
 
             public void removeUpdate(DocumentEvent e) {
                 changed();
+                hideCompletion();
             }
 
             public void changedUpdate(DocumentEvent e) {
@@ -162,6 +207,14 @@ public class LogicEditor extends JPanel {
                 paintCurrentLine();
             }
         });
+
+        text.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                hideCompletion();
+            }
+        });
+        sp.getViewport().addChangeListener(e -> hideCompletion());
 
         highlight();
         paintCurrentLine();
@@ -657,12 +710,17 @@ public class LogicEditor extends JPanel {
                     break;
                 }
             }
+            int logicLines = Math.max(1, logic.split("\n", -1).length);
             for (Diagnostic<? extends JavaFileObject> d : diags.getDiagnostics()) {
                 if (d.getKind() != Diagnostic.Kind.ERROR) {
                     continue;
                 }
                 long genLine = d.getLineNumber();
                 int logicLine = marker >= 0 ? (int) (genLine - marker - 1) : 0;
+                // 编译器可能把错误报到生成的收尾代码上，收拢到逻辑代码的最后一行
+                if (logicLine > logicLines) {
+                    logicLine = logicLines;
+                }
                 String msg = d.getMessage(Locale.CHINA);
                 if (msg != null) {
                     msg = msg.replace("AppMain.java:", "").replaceAll("\\s+", " ").trim();
@@ -817,6 +875,351 @@ public class LogicEditor extends JPanel {
             return text.getDocument().getText(start, end - start);
         } catch (BadLocationException e) {
             return "";
+        }
+    }
+
+    // ---------------- 自动补全 ----------------
+
+    private void setupCompletion() {
+        completionList.setFont(Theme.mono(13));
+        completionList.setFixedCellHeight(22);
+        completionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        completionList.setFocusable(false);
+        completionList.setBackground(new Color(0x252526));
+        completionList.setSelectionBackground(new Color(0x094771));
+        completionList.setSelectionForeground(Color.WHITE);
+        completionList.setCellRenderer(new CandidateRenderer());
+
+        completionTimer = new Timer(80, e -> showCompletion(false));
+        completionTimer.setRepeats(false);
+
+        text.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK),
+                "completion-show");
+        text.getActionMap().put("completion-show", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                showCompletion(true);
+            }
+        });
+
+        text.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (!completionVisible) {
+                    return;
+                }
+                int code = e.getKeyCode();
+                if (code == KeyEvent.VK_ESCAPE) {
+                    hideCompletion();
+                    e.consume();
+                } else if (code == KeyEvent.VK_UP) {
+                    moveSelection(-1);
+                    e.consume();
+                } else if (code == KeyEvent.VK_DOWN) {
+                    moveSelection(1);
+                    e.consume();
+                } else if (code == KeyEvent.VK_ENTER || code == KeyEvent.VK_TAB) {
+                    acceptCompletion();
+                    e.consume();
+                }
+            }
+        });
+    }
+
+    /** 打字后稍等一下再弹提示，避免每敲一个字符都刷新 */
+    private void scheduleCompletion() {
+        if (completionTimer == null) {
+            return;
+        }
+        completionTimer.restart();
+    }
+
+    private void showCompletion(boolean manual) {
+        if (completionTimer != null) {
+            completionTimer.stop();
+        }
+        int pos = text.getCaretPosition();
+        if (text.getSelectionStart() != text.getSelectionEnd()) {
+            hideCompletion();
+            return;
+        }
+        int start = wordStart(pos);
+        String prefix = safeText().substring(start, pos);
+        if (prefix.isEmpty() && !manual) {
+            hideCompletion();
+            return;
+        }
+        // 注释和字符串里不自动弹提示（Ctrl+空格 仍可手动打开）
+        if (!manual && inCommentOrString(pos)) {
+            hideCompletion();
+            return;
+        }
+
+        List<Candidate> all = collectCandidates();
+        List<Candidate> matched = filterCandidates(all, prefix);
+        if (matched.isEmpty()) {
+            hideCompletion();
+            return;
+        }
+        if (matched.size() > MAX_COMPLETIONS) {
+            matched = new ArrayList<Candidate>(matched.subList(0, MAX_COMPLETIONS));
+        }
+
+        completionStart = start;
+        completionModel.clear();
+        for (Candidate c : matched) {
+            completionModel.addElement(c);
+        }
+        completionList.setSelectedIndex(0);
+        showCompletionWindow(pos);
+        completionVisible = true;
+    }
+
+    private void showCompletionWindow(int caretPos) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        if (completionWindow == null) {
+            JPanel body = new JPanel(new BorderLayout());
+            body.setBackground(new Color(0x252526));
+            body.setBorder(new javax.swing.border.LineBorder(new Color(0x454545), 1));
+
+            completionTitle = new JLabel("补全");
+            completionTitle.setFont(Theme.ui(11));
+            completionTitle.setForeground(new Color(0x9DA3A8));
+            completionTitle.setBorder(new EmptyBorder(4, 10, 4, 10));
+
+            body.add(completionTitle, BorderLayout.NORTH);
+            body.add(completionList, BorderLayout.CENTER);
+
+            completionWindow = new JWindow(owner);
+            completionWindow.setFocusableWindowState(false);
+            completionWindow.setContentPane(body);
+        } else if (owner != null && completionWindow.getOwner() != owner) {
+            completionWindow.dispose();
+            completionWindow = null;
+            showCompletionWindow(caretPos);
+            return;
+        }
+
+        Rectangle r = null;
+        try {
+            r = text.modelToView(caretPos);
+        } catch (BadLocationException ignored) {
+            // 忽略
+        }
+        if (r == null) {
+            hideCompletion();
+            return;
+        }
+
+        int width = 220;
+        FontMetrics fm = completionList.getFontMetrics(Theme.mono(13));
+        for (int i = 0; i < completionModel.size(); i++) {
+            width = Math.max(width, fm.stringWidth(completionModel.get(i).label) + 32);
+        }
+        width = Math.min(width, 420);
+        int height = completionModel.size() * 22 + 26;
+
+        if (completionTitle != null) {
+            completionTitle.setText("补全 · " + completionModel.size() + " 项 · Enter 插入 / Esc 关闭");
+        }
+        width = Math.max(width, completionTitle == null ? 0
+                : completionTitle.getPreferredSize().width + 24);
+
+        completionWindow.getContentPane().setPreferredSize(new Dimension(width, height));
+        completionWindow.pack();
+        try {
+            Point screen = text.getLocationOnScreen();
+            completionWindow.setLocation(screen.x + r.x, screen.y + r.y + r.height + 2);
+        } catch (Exception ignored) {
+            // 取不到屏幕坐标时保持默认位置
+        }
+        completionWindow.setVisible(true);
+    }
+
+    private void hideCompletion() {
+        completionVisible = false;
+        completionStart = -1;
+        if (completionWindow != null && completionWindow.isVisible()) {
+            completionWindow.setVisible(false);
+        }
+    }
+
+    private void moveSelection(int delta) {
+        int size = completionModel.size();
+        if (size == 0) {
+            return;
+        }
+        int index = completionList.getSelectedIndex();
+        index = (index + delta + size) % size;
+        completionList.setSelectedIndex(index);
+        completionList.ensureIndexIsVisible(index);
+    }
+
+    private void acceptCompletion() {
+        if (!completionVisible || completionStart < 0) {
+            hideCompletion();
+            return;
+        }
+        int pos = text.getCaretPosition();
+        int index = completionList.getSelectedIndex();
+        if (index < 0 || index >= completionModel.size() || pos < completionStart) {
+            hideCompletion();
+            return;
+        }
+        int start = completionStart;
+        String typed = safeText().substring(start, pos);
+        Candidate picked = completionModel.get(index);
+        if (!typed.isEmpty() && !picked.label.regionMatches(true, 0, typed, 0, typed.length())) {
+            hideCompletion();
+            return;
+        }
+
+        String insert = picked.text;
+        int caretAfter;
+        int paren = insert.indexOf("()");
+        if (paren >= 0) {
+            caretAfter = start + paren + 1;
+        } else {
+            caretAfter = start + insert.length();
+        }
+        hideCompletion();
+        suppressCompletion = true;
+        try {
+            Document doc = text.getDocument();
+            doc.remove(start, pos - start);
+            doc.insertString(start, insert, null);
+        } catch (BadLocationException ignored) {
+            // 忽略
+        } finally {
+            suppressCompletion = false;
+        }
+        text.setCaretPosition(Math.min(caretAfter, text.getDocument().getLength()));
+        text.requestFocusInWindow();
+    }
+
+    /** 光标是否落在注释或字符串里 */
+    private boolean inCommentOrString(int pos) {
+        String src = safeText();
+        int len = Math.min(pos, src.length());
+        int i = 0;
+        while (i < len) {
+            char c = src.charAt(i);
+            if (c == '/' && i + 1 < len && src.charAt(i + 1) == '/') {
+                int end = src.indexOf('\n', i);
+                if (end < 0 || end > len) {
+                    return true;
+                }
+                i = end + 1;
+                continue;
+            }
+            if (c == '/' && i + 1 < len && src.charAt(i + 1) == '*') {
+                int end = src.indexOf("*/", i + 2);
+                if (end < 0 || end + 2 > len) {
+                    return true;
+                }
+                i = end + 2;
+                continue;
+            }
+            if (c == '"' || c == '\'') {
+                int end = scanQuoted(src, i, c);
+                if (end > len) {
+                    return true;
+                }
+                i = end;
+                continue;
+            }
+            i++;
+        }
+        return false;
+    }
+
+    /** 光标所在单词的起点 */
+    private int wordStart(int pos) {
+        String src = safeText();
+        int start = Math.min(pos, src.length());
+        while (start > 0) {
+            char c = src.charAt(start - 1);
+            if (Character.isJavaIdentifierPart(c) && c != '$') {
+                start--;
+            } else {
+                break;
+            }
+        }
+        return start;
+    }
+
+    private List<Candidate> collectCandidates() {
+        LinkedHashSet<Candidate> set = new LinkedHashSet<Candidate>();
+        if (project != null && project.widgets != null) {
+            for (appcreator.model.Widget w : project.widgets) {
+                if (w != null && w.name != null && !w.name.trim().isEmpty()) {
+                    set.add(new Candidate(w.name.trim(), w.name.trim()));
+                }
+            }
+        }
+        for (String k : KEYWORDS) {
+            set.add(new Candidate(k, k));
+        }
+        for (String w : API_WORDS) {
+            set.add(new Candidate(w, w));
+        }
+        return new ArrayList<Candidate>(set);
+    }
+
+    /** 前缀匹配：先字节相同大小写、再忽略大小写开头、最后包含 */
+    private List<Candidate> filterCandidates(List<Candidate> all, String prefix) {
+        List<Candidate> rank0 = new ArrayList<Candidate>();
+        List<Candidate> rank1 = new ArrayList<Candidate>();
+        List<Candidate> rank2 = new ArrayList<Candidate>();
+        if (prefix.isEmpty()) {
+            rank1.addAll(all);
+        } else {
+            for (Candidate c : all) {
+                if (c.label.startsWith(prefix)) {
+                    rank0.add(c);
+                } else if (c.label.regionMatches(true, 0, prefix, 0, prefix.length())) {
+                    rank1.add(c);
+                } else if (c.label.toLowerCase(Locale.ROOT).contains(prefix.toLowerCase(Locale.ROOT))) {
+                    rank2.add(c);
+                }
+            }
+        }
+        List<Candidate> out = new ArrayList<Candidate>(rank0);
+        out.addAll(rank1);
+        if (!out.isEmpty()) {
+            return out;
+        }
+        return rank2;
+    }
+
+    /** 补全项：label 展示，text 插入 */
+    private static final class Candidate {
+        final String label;
+        final String text;
+
+        Candidate(String label, String text) {
+            this.label = label;
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    private static final class CandidateRenderer extends JLabel implements ListCellRenderer<Candidate> {
+        CandidateRenderer() {
+            setOpaque(true);
+            setFont(Theme.mono(13));
+            setBorder(new EmptyBorder(2, 10, 2, 10));
+        }
+
+        public Component getListCellRendererComponent(JList<? extends Candidate> list, Candidate value,
+                                                     int index, boolean isSelected, boolean cellHasFocus) {
+            setText(value == null ? "" : value.label);
+            setBackground(isSelected ? new Color(0x094771) : new Color(0x252526));
+            setForeground(isSelected ? Color.WHITE : new Color(0xD4D4D4));
+            return this;
         }
     }
 
