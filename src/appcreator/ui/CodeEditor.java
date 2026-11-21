@@ -45,6 +45,9 @@ import java.util.Locale;
 public class CodeEditor extends JPanel {
 
     // VS Code Dark+ 取色
+    /** 代码字号：汉字黑体 / 英文 Consolas 同字号 */
+    private static final int CODE_SIZE = 14;
+
     private static final Color BG = new Color(0x1E1E1E);
     private static final Color PANEL = new Color(0x252526);
     private static final Color BORDER = new Color(0x3C3C3C);
@@ -485,6 +488,39 @@ public class CodeEditor extends JPanel {
             }
             i++;
         }
+        fontify(src, len);
+    }
+
+    /** 汉字用黑体、英文和字母用 Consolas：按「汉字 / 非汉字 + 当前颜色」切段，保留原有配色与粗斜体 */
+    private void fontify(String src, int len) {
+        if (len <= 0) {
+            return;
+        }
+        StyledDocument doc = text.getStyledDocument();
+        int i = 0;
+        while (i < len) {
+            boolean cjk = Fonts.isCjk(src.charAt(i));
+            Color color = foregroundAt(doc, i);
+            int end = i + 1;
+            while (end < len && Fonts.isCjk(src.charAt(end)) == cjk
+                    && sameColor(foregroundAt(doc, end), color)) {
+                end++;
+            }
+            SimpleAttributeSet attrs = new SimpleAttributeSet(doc.getCharacterElement(i).getAttributes());
+            StyleConstants.setFontFamily(attrs, cjk ? Theme.CJK_FAMILY : Theme.MONO_FAMILY);
+            StyleConstants.setFontSize(attrs, CODE_SIZE);
+            doc.setCharacterAttributes(i, end - i, attrs, false);
+            i = end;
+        }
+    }
+
+    private Color foregroundAt(StyledDocument doc, int offset) {
+        Object fg = doc.getCharacterElement(offset).getAttributes().getAttribute(StyleConstants.Foreground);
+        return fg instanceof Color ? (Color) fg : null;
+    }
+
+    private boolean sameColor(Color a, Color b) {
+        return a == null ? b == null : a.equals(b);
     }
 
     private String safeText() {

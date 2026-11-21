@@ -3,6 +3,7 @@ package appcreator.ui;
 import appcreator.gen.CodeGenerator;
 import appcreator.gen.Exporter;
 import appcreator.gen.Runner;
+import appcreator.io.Lang;
 import appcreator.io.ProjectIO;
 import appcreator.model.ComponentFactory;
 import appcreator.model.Project;
@@ -91,6 +92,10 @@ public class MainFrame extends JFrame {
         add(buildCenter(), BorderLayout.CENTER);
         add(buildRight(), BorderLayout.EAST);
         add(buildBottom(), BorderLayout.SOUTH);
+
+        Lang.loadSaved();
+        Lang.applyTree(getContentPane());
+        Fonts.apply(getContentPane());
 
         props.bind(project, null);
         codeArea.setProject(project);
@@ -221,6 +226,11 @@ public class MainFrame extends JFrame {
                 runPreview();
             }
         }));
+        actions.add(button("设置", Theme.SOFT, Theme.ACCENT_DARK, new Runnable() {
+            public void run() {
+                openSettings();
+            }
+        }));
         bar.add(actions, BorderLayout.EAST);
         return bar;
     }
@@ -239,8 +249,7 @@ public class MainFrame extends JFrame {
         windowMock.repaint();
     }
 
-    private RoundButton button(String text, Color bg, Color fg, final Runnable action) {
-        RoundButton b = new RoundButton(text, bg, fg);
+    private RoundButton button(String text, Color bg, Color fg, final Runnable action) {        RoundButton b = new RoundButton(text, bg, fg);
         b.setBorder(new EmptyBorder(7, 12, 7, 12));
         b.addActionListener(e -> action.run());
         return b;
@@ -527,6 +536,7 @@ public class MainFrame extends JFrame {
             currentFile = f;
             counter = 0;
             dirty = false;
+            Lang.setProjectDir(f.getParentFile());
             updateSizeLabel();
             updateTitle();
             setStatus("已打开：" + f.getName());
@@ -717,7 +727,28 @@ public class MainFrame extends JFrame {
     }
 
     private void updateTitle() {
-        setTitle("应用创作器 · " + (currentFile == null ? project.title : currentFile.getName()));
+        setTitle(Lang.t("应用创作器") + " · " + (currentFile == null ? project.title : currentFile.getName()));
+    }
+
+    /** 设置窗口：切语言、导入 .japa 语言包 */
+    private void openSettings() {
+        SettingsDialog d = new SettingsDialog(this, new Runnable() {
+            public void run() {
+                Lang.applyTree(getContentPane());
+                Fonts.apply(getContentPane());
+                getContentPane().repaint();
+                updateTitle();
+                updateSizeLabel();
+                if (codeWindow != null) {
+                    Lang.applyTree(codeWindow.getContentPane());
+                    Fonts.apply(codeWindow.getContentPane());
+                    codeWindow.repaint();
+                    codeWindow.refreshProject(project);
+                }
+                setStatus("界面语言：" + Lang.name());
+            }
+        });
+        d.setVisible(true);
     }
 
     private void installShortcuts() {

@@ -212,8 +212,7 @@ public class PropertiesPane extends JPanel {
     private JComponent row(String label, JComponent comp) {
         JPanel p = new JPanel(new BorderLayout(8, 0));
         p.setOpaque(false);
-        JLabel l = Theme.label(label, 12, Theme.MUTED);
-        l.setPreferredSize(new Dimension(50, 24));
+        JLabel l = Theme.autoLabel(label, 12, Theme.MUTED);
         p.add(l, BorderLayout.WEST);
         p.add(comp, BorderLayout.CENTER);
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -687,7 +686,7 @@ public class PropertiesPane extends JPanel {
 
             String txt = color == null ? "默认" : String.format("#%06X", color.getRGB() & 0xFFFFFF);
             g2.setColor(isEnabled() ? Theme.TEXT : Theme.MUTED);
-            g2.setFont(Theme.mono(11));
+            g2.setFont(Fonts.hasCjk(txt) ? Theme.ui(11) : Theme.mono(11));
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(txt, sx + sw + 7, (h - fm.getHeight()) / 2 + fm.getAscent());
             g2.dispose();

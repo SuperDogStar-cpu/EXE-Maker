@@ -1,5 +1,6 @@
 package appcreator.ui;
 
+import appcreator.io.Lang;
 import appcreator.model.ComponentFactory;
 
 import javax.swing.*;
@@ -169,7 +170,7 @@ public class PalettePanel extends JPanel {
             g2.setFont(Theme.ui(13));
             FontMetrics tm = g2.getFontMetrics();
             g2.setColor(Theme.TEXT);
-            g2.drawString(type, ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent());
+            g2.drawString(Lang.t(type), ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent());
             g2.dispose();
         }
     }

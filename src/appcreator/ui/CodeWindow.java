@@ -1,6 +1,7 @@
 package appcreator.ui;
 
 import appcreator.gen.CodeGenerator;
+import appcreator.io.Lang;
 import appcreator.model.Project;
 
 import javax.swing.*;
@@ -23,6 +24,9 @@ public class CodeWindow extends JDialog {
     private static final Color TEXT = new Color(0xCCCCCC);
     private static final Color MUTED = new Color(0x858585);
     private static final Color BLUE = new Color(0x0E639C);
+    /** 深色按钮：深底、浅字，三个按钮统一 */
+    private static final Color BUTTON_BG = new Color(0x333333);
+    private static final Color BUTTON_FG = new Color(0xEDEDED);
 
     private final CodeEditor editor;
     private final CodeEditor fullEditor = new CodeEditor(true);
@@ -39,7 +43,7 @@ public class CodeWindow extends JDialog {
     private boolean refreshing;
 
     public CodeWindow(JFrame owner, CodeEditor editor, Runnable onSave, Runnable onPreview) {
-        super(owner, "代码编辑器", false);
+        super(owner, Lang.t("代码编辑器"), false);
         this.editor = editor;
         this.onSave = onSave;
         this.onPreview = onPreview;
@@ -72,6 +76,8 @@ public class CodeWindow extends JDialog {
         });
 
         installKeys();
+        Lang.applyTree(getContentPane());
+        Fonts.apply(getContentPane());
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -129,7 +135,7 @@ public class CodeWindow extends JDialog {
     /** 项目切换（新建/打开）时同步标题和编辑器 */
     public void refreshProject(Project project) {
         this.project = project;
-        titleLabel.setText(project == null ? "逻辑" : "逻辑 · " + project.title);
+        titleLabel.setText(project == null ? Lang.t("逻辑") : Lang.t("逻辑") + " · " + project.title);
         editor.setProject(project);
         fullEditor.setProject(project);
         customEdited = project != null && project.customCode != null
@@ -189,7 +195,7 @@ public class CodeWindow extends JDialog {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        actions.add(darkButton("重新生成", new Color(0x3C3C3C), Color.WHITE, new Runnable() {
+        actions.add(darkButton("重新生成", BUTTON_BG, BUTTON_FG, new Runnable() {
             public void run() {
                 discardCustomCode();
             }
@@ -217,8 +223,8 @@ public class CodeWindow extends JDialog {
 
     private void updateHint() {
         customHint.setText(customEdited
-                ? "已手改：预览 / 导出都按这份代码走（点「重新生成」恢复）"
-                : "由设计器生成，可直接在这里改组件、改布局，改了就按这份代码跑");
+                ? Lang.t("已手改：预览 / 导出都按这份代码走（点「重新生成」恢复）")
+                : Lang.t("由设计器生成，可直接在这里改组件、改布局，改了就按这份代码跑"));
         customHint.setForeground(customEdited ? new Color(0xE2C08D) : MUTED);
     }
 
@@ -245,20 +251,20 @@ public class CodeWindow extends JDialog {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        actions.add(darkButton("立即检查", new Color(0x3C3C3C), Color.WHITE, new Runnable() {
+        actions.add(darkButton("立即检查", BUTTON_BG, BUTTON_FG, new Runnable() {
             public void run() {
                 editor.recheck();
                 fullEditor.recheck();
             }
         }));
-        actions.add(darkButton("运行预览", new Color(0x3C3C3C), Color.WHITE, new Runnable() {
+        actions.add(darkButton("运行预览", BUTTON_BG, BUTTON_FG, new Runnable() {
             public void run() {
                 if (onPreview != null) {
                     onPreview.run();
                 }
             }
         }));
-        actions.add(darkButton("保存并关闭", BLUE, Color.WHITE, new Runnable() {
+        actions.add(darkButton("保存并关闭", BUTTON_BG, BUTTON_FG, new Runnable() {
             public void run() {
                 if (onSave != null) {
                     onSave.run();
