@@ -1,6 +1,7 @@
 package appcreator;
 
 import appcreator.gen.JavaEnv;
+import appcreator.io.LanguageSync;
 import appcreator.ui.MainFrame;
 import appcreator.ui.Theme;
 
@@ -24,7 +25,7 @@ public class AppCreator {
         }
         tuneDefaults();
 
-        // 先把 Java 检测跑完再进主界面：启动画面停在这里，检测完自动关闭
+        // 启动流程：适配字体 → 下载语言包 → 检测 Java → 进主界面；每一步都显示在启动画面上
         final JWindow splash = buildSplash();
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
@@ -33,6 +34,15 @@ public class AppCreator {
         });
         new Thread(new Runnable() {
             public void run() {
+                step("正在适配本机字体…");
+                appcreator.ui.Fonts.syncLanguage();
+                step("正在下载语言包…");
+                LanguageSync.sync(new LanguageSync.Listener() {
+                    public void step(String text) {
+                        AppCreator.step(text);
+                    }
+                });
+                step("正在检测本机 Java 版本并验证是否可用…");
                 JavaEnv.detect();
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
@@ -42,10 +52,25 @@ public class AppCreator {
                     }
                 });
             }
-        }, "detect-java").start();
+        }, "startup").start();
     }
 
-    /** 启动画面：检测 Java 时停留在这里 */
+    private static JLabel splashSub;
+
+    /** 更新启动画面上的提示文字 */
+    private static void step(final String text) {
+        final JLabel label = splashSub;
+        if (label == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                label.setText(text);
+            }
+        });
+    }
+
+    /** 启动画面：适配字体、下载语言包、检测 Java 时停留在这里 */
     private static JWindow buildSplash() {
         JWindow win = new JWindow();
         JPanel root = new JPanel(new BorderLayout(0, 12));
@@ -55,9 +80,10 @@ public class AppCreator {
         JLabel title = new JLabel("应用创作器");
         title.setFont(Theme.ui(17, Font.BOLD));
         title.setForeground(Theme.ACCENT_DARK);
-        JLabel sub = new JLabel("正在检测本机 Java 版本并验证是否可用…");
+        JLabel sub = new JLabel("正在适配本机字体…");
         sub.setFont(Theme.ui(12));
         sub.setForeground(Theme.MUTED);
+        splashSub = sub;
 
         JPanel texts = new JPanel();
         texts.setOpaque(false);

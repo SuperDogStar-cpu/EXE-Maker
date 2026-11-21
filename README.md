@@ -65,7 +65,8 @@
 - **自动识别**：启动时会扫描本机的 Java —— 当前运行环境、`JAVA_HOME`、`PATH`，以及 `Program Files` / Eclipse Adoptium / AdoptOpenJDK / Zulu / Microsoft / BellSoft / Corretto / Semeru / ojdkbuild、`%LOCALAPPDATA%\Programs`、`%LOCALAPPDATA%\Java`、`~/tools`、`~/.jdks`、`~/scoop/apps`（Linux / macOS 还有 `/usr/lib/jvm`、`/opt` 等）。每个候选都会**真的跑一次 `java -version`** 验证，跑不通的不进列表。
 - **下拉框**：默认「自动（跟随当前运行环境）」；其它项显示成 `Java 21.0.12（JDK · 当前运行）` 这种「版本（JDK / JRE · 是否当前运行）」，鼠标悬停能看到完整安装路径。点「重新检测」会重新扫描（检测在后台线程跑，界面不卡）。
 - **影响范围**：「导出 EXE」用的 `jpackage`、「运行预览」的外部编译回退用的 `javac` / `java`，都优先用你选中的那个 JDK；选的是纯 JRE（没有 `javac` / `jpackage`）时会自动退回当前运行的 JDK，缺工具时弹提示引导你去设置里改。
-- **启动时停留**：打开创作器会先出现一个「正在检测本机 Java 版本并验证是否可用…」的小窗口，检测跑完才进主界面，所以进来之后「设置 → Java」里就是已经验证过的列表，不用等。
+- **启动顺序**：打开创作器会先出现一个小窗口，依次显示「正在适配本机字体… → 正在下载语言包…（x/6） → 正在检测本机 Java 版本并验证是否可用…」，三步都跑完才进主界面，所以进来之后语言和「设置 → Java」里都是现成的，不用等。
+- **自动下载语言包**：启动时会从 GitHub 仓库的 `Language/` 目录把 6 个 `.japa` 拉到用户目录下的 `Language`（Windows `%USERPROFILE%\Language`，macOS / Linux `~/Language`），下次离线也能直接用；网络不通或某个包失败只会跳过，不影响进主界面。
 - 选择记在用户目录的 `应用创作器.java.properties`（键 `home`），下次启动直接复用。
 
 ### 字体
@@ -140,6 +141,7 @@ Java应用创作器/
 ├─ preview_logic_dark.png   界面截图（深色代码编辑器，含错误波浪线）
 ├─ preview_complete.png     界面截图（代码补全候选框）
 ├─ preview_splash.png       界面截图（启动时的 Java 检测窗口）
+├─ preview_splash_sync.png 界面截图（启动时自动下载语言包）
 ```
 
 ## 生成的代码长什么样

@@ -175,8 +175,14 @@ public class SettingsDialog extends JDialog {
         List<File> packs = Lang.discover();
         File current = Lang.file();
         Item selected = null;
+        java.util.Set<String> seen = new java.util.HashSet<String>();
         for (File f : packs) {
-            Item it = new Item(Lang.displayName(f), f);
+            String name = Lang.displayName(f);
+            // 项目目录和用户目录里可能各有一份同名语言包（启动时会自动下载），下拉框只留一份
+            if (!seen.add(name)) {
+                continue;
+            }
+            Item it = new Item(name, f);
             combo.addItem(it);
             if (current != null && current.getAbsoluteFile().equals(f.getAbsoluteFile())) {
                 selected = it;
