@@ -442,8 +442,17 @@ public class PropertiesPane extends JPanel {
         current.text = fText.getText();
         current.x = Math.max(0, num(fX.getText(), current.x));
         current.y = Math.max(0, num(fY.getText(), current.y));
-        current.w = Math.max(20, num(fW.getText(), current.w));
-        current.h = Math.max(16, num(fH.getText(), current.h));
+        // 缩放限制：最小 100×100，最大不超过窗口尺寸
+        int maxW = project == null ? 900 : Math.max(1, project.width);
+        int maxH = project == null ? 620 : Math.max(1, project.height);
+        current.w = Math.min(maxW, Math.max(Math.min(100, maxW), num(fW.getText(), current.w)));
+        current.h = Math.min(maxH, Math.max(Math.min(100, maxH), num(fH.getText(), current.h)));
+        if (current.x + current.w > maxW) {
+            current.x = Math.max(0, maxW - current.w);
+        }
+        if (current.y + current.h > maxH) {
+            current.y = Math.max(0, maxH - current.h);
+        }
         int fs = num(fSize.getText(), current.fontSize);
         current.fontSize = Math.max(8, Math.min(72, fs));
         current.bold = cBold.isSelected();
