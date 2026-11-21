@@ -27,6 +27,137 @@ public final class Fonts {
             "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Arial Unicode MS", "Dialog"
     };
 
+    /**
+     * 实际候选链：已经下载并注册了韩文字体时，把它排在系统韩文字体（Malgun Gothic）后面当兜底，
+     * 系统有韩文字体就用系统的，没有（或显示不了某个谚文字）才用下载来的 NanumGothic。
+     */
+    private static String[] candidates() {
+        String kr = appcreator.io.KoreanFont.family();
+        if (kr == null) {
+            return UI_CANDIDATES;
+        }
+        String[] out = new String[UI_CANDIDATES.length + 1];
+        int i = 0;
+        for (String s : UI_CANDIDATES) {
+            out[i++] = s;
+            if ("Malgun Gothic".equals(s)) {
+                out[i++] = kr;
+            }
+        }
+        return out;
+    }
+
+    /** 文字里有没有谚文（韩文） */
+    public static boolean hasHangul(String s) {
+        if (s == null) {
+            return false;
+        }
+        int i = 0;
+        while (i < s.length()) {
+            int cp = s.codePointAt(i);
+            i += Character.charCount(cp);
+            if ((cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x3130 && cp <= 0x318F)
+                    || (cp >= 0xA960 && cp <= 0xA97F) || (cp >= 0xAC00 && cp <= 0xD7FF)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 当前界面是不是需要韩文字体（系统已经能显示谚文就不需要下载） */
+    public static boolean needsKoreanFont() {
+        if (appcreator.io.KoreanFont.family() != null) {
+            return false;
+        }
+        String sample = hangulSample();
+        if (sample.length() == 0) {
+            return false;
+        }
+        for (String family : UI_CANDIDATES) {
+            if (canDisplayAll(family, sample)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 从当前界面语言里挑出谚文字符，用来判断本机字体够不够用 */
+    private static String hangulSample() {
+        StringBuilder all = new StringBuilder(Lang.name());
+        for (String key : new String[]{"组件库", "新建", "设置", "窗口", "属性", "代码", "取消", "确定"}) {
+            all.append(Lang.t(key));
+        }
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        while (i < all.length()) {
+            int cp = all.codePointAt(i);
+            i += Character.charCount(cp);
+            if ((cp >= 0x1100 && cp <= 0x11FF) || (cp >= 0x3130 && cp <= 0x318F)
+                    || (cp >= 0xA960 && cp <= 0xA97F) || (cp >= 0xAC00 && cp <= 0xD7FF)) {
+                out.appendCodePoint(cp);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * 确保韩文字体可用（会阻塞，启动画面里用）：本地有就注册，没有就下载。
+     * 成功后重算字体并刷新界面。
+     */
+    public static boolean ensureKoreanFont() {
+        if (!needsKoreanFont()) {
+            return appcreator.io.KoreanFont.family() != null;
+        }
+        boolean ok = appcreator.io.KoreanFont.ensure();
+        if (ok) {
+            refresh();
+        }
+        return ok;
+    }
+
+    /** 不阻塞界面：后台下载韩文字体，装好后自动刷新成韩文字体 */
+    public static void prepareKoreanFontAsync() {
+        if (!needsKoreanFont() || appcreator.io.KoreanFont.downloading()) {
+            return;
+        }
+        appcreator.io.KoreanFont.ensureAsync(new Runnable() {
+            public void run() {
+                refresh();
+            }
+        });
+    }
+
+    /** 字体集合变了（比如刚注册了韩文字体）：清缓存、重挑当前语言字体、把已有窗口重刷一遍 */
+    public static void refresh() {
+        PROBES.clear();
+        TEXT_FAMILY.clear();
+        CHAR_FAMILY.clear();
+        syncLanguage();
+        repaintAll();
+    }
+
+    /** 把所有已显示窗口的字体重新按当前文字挑一遍（下载完韩文字体后用） */
+    public static void repaintAll() {
+        Runnable r = new Runnable() {
+            public void run() {
+                for (Window w : Window.getWindows()) {
+                    if (w instanceof javax.swing.RootPaneContainer) {
+                        javax.swing.RootPaneContainer rpc = (javax.swing.RootPaneContainer) w;
+                        if (rpc.getContentPane() != null) {
+                            applyTree(rpc.getContentPane());
+                        }
+                    }
+                    w.repaint();
+                }
+            }
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            javax.swing.SwingUtilities.invokeLater(r);
+        }
+    }
+
     private static final Map<String, Font> PROBES = new HashMap<String, Font>();
     private static final Map<String, String> TEXT_FAMILY = new HashMap<String, String>();
     /** 单个字符 → 能显示它的字体家族（换字体兜底用） */
@@ -85,6 +216,14 @@ public final class Fonts {
         Theme.setUiFamily(family);
         TEXT_FAMILY.clear();
         CHAR_FAMILY.clear();
+        // 界面里有谚文但本机还没注册韩文字体：后台下一份 NanumGothic，装好后自动换上去
+        if (hasHangul(sample.toString()) && appcreator.io.KoreanFont.family() == null) {
+            appcreator.io.KoreanFont.ensureAsync(new Runnable() {
+                public void run() {
+                    refresh();
+                }
+            });
+        }
     }
 
     private static void applyTree(Component root) {
@@ -156,7 +295,7 @@ public final class Fonts {
             return cached;
         }
         String family = null;
-        for (String cand : UI_CANDIDATES) {
+        for (String cand : candidates()) {
             if (canDisplay(cand, codePoint)) {
                 family = cand;
                 break;
@@ -240,14 +379,14 @@ public final class Fonts {
 
     /** 按顺序找第一款能显示 text 里所有非 ASCII 字符的字体，都不行就挑覆盖最多的那款 */
     private static String bestDisplayable(String text) {
-        for (String family : UI_CANDIDATES) {
+        for (String family : candidates()) {
             if (canDisplayAll(family, text)) {
                 return family;
             }
         }
         String best = "Dialog";
         int bestScore = -1;
-        for (String family : UI_CANDIDATES) {
+        for (String family : candidates()) {
             int score = countDisplayable(family, text);
             if (score > bestScore) {
                 bestScore = score;

@@ -75,6 +75,8 @@
 
 **缺字形自动换字体**：每段文字先找一款能显示全部字形的字体（黑体 → 微软雅黑 → 游黑体 → Meiryo UI → MS Gothic → Malgun Gothic → 宋体 → Nirmala UI → Leelawadee UI → Segoe UI Emoji / Symbol → Segoe UI → Arial Unicode MS → Dialog）；万一某款字体显示不了其中某个字（罕见汉字、日文假名、谚文、阿拉伯文、泰文、天城文、希腊文、表情符号等），就按单个字符再换一次字体来画，不会留下空白方框。组件库、画布标签、模拟窗口标题、属性面板色值这些自绘文字都走同一套逐字兜底。
 
+**韩文字体自动下载**：切到韩文界面时，如果本机没有一款能显示谚文的字体（Windows 一般自带 Malgun Gothic，有这个就直接用），程序会在后台下载一份开源字体 NanumGothic（OFL 许可，Google Fonts 分发），存到 `%USERPROFILE%\.appcreator\fonts\NanumGothic-Regular.ttf`（macOS / Linux 是 `~/.appcreator/fonts/`），注册给 JVM 后自动用于韩文，已有窗口会立刻重刷，不用重启。下载在后台线程跑，下载慢或失败都不会拖住启动和界面；下次启动直接读本地文件。
+
 ### 自定义窗口图标
 
 右侧「属性」→ 窗口 → 「图标」这一行：点「选择」挑一张图片（PNG / JPG / GIF / BMP 都行），点「清除」恢复默认。选好后：

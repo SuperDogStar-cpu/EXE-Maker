@@ -42,6 +42,11 @@ public class AppCreator {
                         AppCreator.step(text);
                     }
                 });
+                // 韩文界面：本机没有能显示谚文的字体就后台下载一份 NanumGothic，不拖慢启动
+                if (appcreator.ui.Fonts.needsKoreanFont()) {
+                    step("正在后台下载韩文字体…");
+                    appcreator.ui.Fonts.prepareKoreanFontAsync();
+                }
                 step("正在检测本机 Java 版本并验证是否可用…");
                 JavaEnv.detect();
                 SwingUtilities.invokeLater(new Runnable() {
