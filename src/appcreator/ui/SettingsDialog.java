@@ -100,7 +100,8 @@ public class SettingsDialog extends JDialog {
                 + "  新建=New\n"
                 + "\n"
                 + "文件名随便取，认的是 .japa 后缀；程序目录、用户目录、\n"
-                + "当前项目目录里放的语言包会自动列在上面的下拉框里。\n"
+                + "当前项目目录以及它们下面的 Language 文件夹里放的语言包，\n"
+                + "都会自动列在上面的下拉框里。\n"
                 + "译文会替换内置界面文字，没写到的保持原样。");
         tip.setRows(9);
         JScrollPane sp = new JScrollPane(tip);

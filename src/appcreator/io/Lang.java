@@ -178,7 +178,7 @@ public final class Lang {
         return out;
     }
 
-    /** 找程序目录、用户目录、当前项目目录下的所有 .japa（认后缀，文件名随意） */
+    /** 找程序目录、用户目录、当前项目目录（以及它们下面的 Language 文件夹）里的所有 .japa */
     public static List<File> discover() {
         List<File> out = new ArrayList<File>();
         List<File> dirs = new ArrayList<File>();
@@ -189,17 +189,26 @@ public final class Lang {
             dirs.add(projectDir);
         }
         for (File dir : dirs) {
-            File[] files = dir == null ? null : dir.listFiles();
-            if (files == null) {
+            if (dir == null) {
                 continue;
             }
-            for (File f : files) {
-                if (f.isFile() && f.getName().toLowerCase().endsWith(".japa") && !out.contains(f)) {
-                    out.add(f);
-                }
-            }
+            scanJapa(dir, out);
+            scanJapa(new File(dir, "Language"), out);
+            scanJapa(new File(dir, "language"), out);
         }
         return out;
+    }
+
+    private static void scanJapa(File dir, List<File> out) {
+        File[] files = dir == null ? null : dir.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(".japa") && !out.contains(f)) {
+                out.add(f);
+            }
+        }
     }
 
     public static File programDir() {

@@ -1,14 +1,12 @@
 #name=English
-# 语言包示例：一行一条「原文=译文」，井号开头是注释。
-# 文件名随便取（认得是 .japa 后缀就行），放在程序目录 / 用户目录 / 项目目录都能被自动列出来。
-
+# 语言包：一行一条「原文=译文」，井号开头是注释。
 应用创作器=App Creator
 新建=New
 打开=Open
 保存=Save
 导出 Java=Export Java
 导出 EXE=Export EXE
-删除组件=Delete
+删除组件=Delete Widget
 模拟窗口=Mock Window
 运行预览=Run Preview
 设置=Settings
@@ -54,4 +52,6 @@
 加粗=Bold
 选择=Choose
 清除=Clear
-重新生成=Regenerate
+语言=Language
+取消=Cancel
+确定=OK

@@ -1,5 +1,19 @@
 # 更新日志
 
+## v1.5 — 2026-11-21
+
+新增 `Language` 文件夹，内置 **28 国语言包**。
+
+### 新增功能
+
+- **`Language` 文件夹**：程序目录、用户目录、当前项目目录下面的 `Language`（也认小写 `language`）现在会被自动扫描，里面的 `.japa` 全部列进「设置 → 语言」的下拉框；文件名依旧不改，只认后缀。
+- **28 国语言包**：`Language` 里放好 English、繁體中文、日本語、한국어、Tiếng Việt、ไทย、Bahasa Indonesia、Bahasa Melayu、हिन्दी、Русский、Українська、Deutsch、Français、Español、Português、Italiano、Nederlands、Polski、Čeština、Magyar、Română、Türkçe、Ελληνικά、Svenska、Norsk、Suomi、Dansk、العربية。
+- 每个语言包都是完整的 55 条界面文字（工具栏、组件库三分类、属性面板、代码编辑器标签、设置窗口的按钮等），`#name=` 写的是该语言的自称名。
+
+### 改进
+
+- 原来放在项目根目录的 `English.japa` 移入 `Language` 文件夹，避免下拉框出现两个 English；简体中文仍是内置默认，不需要语言包。
+
 ## v1.4 — 2026-11-21
 
 设置里新增 **Java 选择**：自动识别本机所有 Java 版本并逐个验证是否可用，启动软件时先停在检测界面，识别完才进入主界面。
