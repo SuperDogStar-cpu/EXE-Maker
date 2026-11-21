@@ -78,7 +78,7 @@ public final class Exporter {
             Files.createDirectories(classes);
 
             Path srcFile = work.resolve("AppMain.java");
-            Files.write(srcFile, CodeGenerator.generate(project).getBytes(StandardCharsets.UTF_8));
+            Files.write(srcFile, CodeGenerator.source(project).getBytes(StandardCharsets.UTF_8));
 
             // 1. 编译
             DiagnosticCollector<JavaFileObject> diags = new DiagnosticCollector<JavaFileObject>();

@@ -31,6 +31,9 @@ public class Project {
     /** 图标文件名，仅用于界面显示 */
     public String iconName = "";
 
+    /** 手改过的完整源码；为 null/空 表示由设计器自动生成 */
+    public String customCode;
+
     public final List<Widget> widgets = new ArrayList<Widget>();
 
     public void reset() {
@@ -41,6 +44,7 @@ public class Project {
         logic = DEFAULT_LOGIC;
         iconPng = null;
         iconName = "";
+        customCode = null;
         widgets.clear();
     }
 }

@@ -48,6 +48,12 @@ public class PropertiesPane extends JPanel {
     private final ColorWell fgWell = new ColorWell(false);
     private final ColorWell bgWell = new ColorWell(true);
     private final JTextField fItems = Theme.field();
+    private final JTextField fPath = Theme.field();
+    private final RoundButton fPathChoose = new RoundButton("选择", Theme.SOFT, Theme.ACCENT_DARK);
+    private final RoundButton fPathClear = new RoundButton("清除", new Color(0xFDF0F0), new Color(0xC0504D));
+    private final JTextField fUrl = Theme.field();
+    private JComponent pathRow;
+    private JComponent urlRow;
 
     private final List<JComponent> widgetInputs = new ArrayList<JComponent>();
     private JLabel emptyHint;
@@ -64,6 +70,15 @@ public class PropertiesPane extends JPanel {
         content.setBackground(Theme.BG);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(new EmptyBorder(12, 12, 12, 12));
+
+        // 长文本（网址 / 文件路径 / 下拉项）不撑宽面板，超长内容用鼠标悬停提示
+        Dimension fieldSize = new Dimension(150, 28);
+        fTitle.setPreferredSize(fieldSize);
+        fName.setPreferredSize(fieldSize);
+        fText.setPreferredSize(fieldSize);
+        fItems.setPreferredSize(fieldSize);
+        fUrl.setPreferredSize(fieldSize);
+        fPath.setPreferredSize(new Dimension(130, 28));
 
         content.add(buildWindowCard());
         content.add(Box.createVerticalStrut(12));
@@ -142,6 +157,31 @@ public class PropertiesPane extends JPanel {
         card.add(row("背景色", bgWell));
         card.add(row("下拉项", fItems));
 
+        JPanel pathPanel = new JPanel(new BorderLayout(6, 0));
+        pathPanel.setOpaque(false);
+        fPathChoose.setPreferredSize(new Dimension(46, 26));
+        fPathChoose.setFont(Theme.ui(11));
+        fPathChoose.setBorder(new EmptyBorder(2, 6, 2, 6));
+        fPathClear.setPreferredSize(new Dimension(46, 26));
+        fPathClear.setFont(Theme.ui(11));
+        fPathClear.setBorder(new EmptyBorder(2, 6, 2, 6));
+        pathPanel.add(fPath, BorderLayout.CENTER);
+        JPanel pathButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        pathButtons.setOpaque(false);
+        pathButtons.add(fPathChoose);
+        pathButtons.add(fPathClear);
+        pathPanel.add(pathButtons, BorderLayout.EAST);
+        fPath.setEditable(false);
+        fPath.setToolTipText("图片 / 视频文件路径，点「选择」挑一个");
+        pathRow = row("文件", pathPanel);
+        card.add(pathRow);
+
+        fUrl.setToolTipText("例：https://www.example.com");
+        urlRow = row("网址", fUrl);
+        card.add(urlRow);
+        pathRow.setVisible(false);
+        urlRow.setVisible(false);
+
         cBold.setOpaque(false);
         cBold.setFont(Theme.ui(12));
         cBold.setForeground(Theme.MUTED);
@@ -164,6 +204,8 @@ public class PropertiesPane extends JPanel {
         widgetInputs.add(fgWell);
         widgetInputs.add(bgWell);
         widgetInputs.add(fItems);
+        widgetInputs.add(fPath);
+        widgetInputs.add(fUrl);
         return card;
     }
 
@@ -316,10 +358,20 @@ public class PropertiesPane extends JPanel {
                 applyWidget();
             }
         };
-        JTextField[] fields = {fName, fText, fX, fY, fW, fH, fSize, fItems};
+        JTextField[] fields = {fName, fText, fX, fY, fW, fH, fSize, fItems, fUrl};
         for (JTextField f : fields) {
             doc(f, apply);
         }
+        fPathChoose.addActionListener(e -> chooseWidgetFile());
+        fPathClear.addActionListener(e -> {
+            if (current != null) {
+                current.path = "";
+                updating = true;
+                fPath.setText("");
+                updating = false;
+                fire();
+            }
+        });
         cBold.addActionListener(e -> apply.run());
         fgWell.setOnChange(new Runnable() {
             public void run() {
@@ -390,6 +442,47 @@ public class PropertiesPane extends JPanel {
         current.fontSize = Math.max(8, Math.min(72, fs));
         current.bold = cBold.isSelected();
         current.items = fItems.getText();
+        current.url = fUrl.getText().trim();
+        fire();
+    }
+
+    /** 选择图片 / 视频文件（双击在新窗口里用系统程序打开） */
+    private void chooseWidgetFile() {
+        if (current == null) {
+            return;
+        }
+        final boolean video = "视频".equals(current.type);
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle(video ? "选择视频文件" : "选择图片文件");
+        fc.setAcceptAllFileFilterUsed(false);
+        fc.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            @Override
+            public boolean accept(java.io.File f) {
+                if (f.isDirectory()) {
+                    return true;
+                }
+                String n = f.getName().toLowerCase();
+                if (video) {
+                    return n.endsWith(".mp4") || n.endsWith(".avi") || n.endsWith(".wmv")
+                            || n.endsWith(".mov") || n.endsWith(".mkv") || n.endsWith(".flv");
+                }
+                return n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg")
+                        || n.endsWith(".gif") || n.endsWith(".bmp");
+            }
+
+            @Override
+            public String getDescription() {
+                return video ? "视频文件（MP4 / AVI / WMV / MOV / MKV / FLV）"
+                        : "图片文件（PNG / JPG / GIF / BMP）";
+            }
+        });
+        if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        current.path = fc.getSelectedFile().getAbsolutePath();
+        updating = true;
+        fPath.setText(current.path);
+        updating = false;
         fire();
     }
 
@@ -449,6 +542,15 @@ public class PropertiesPane extends JPanel {
             bgWell.setColor(w.bg);
             fItems.setText(w.items == null ? "" : w.items);
             fItems.setEnabled("下拉框".equals(w.type));
+            fPath.setText(w.path == null ? "" : w.path);
+            fUrl.setText(w.url == null ? "" : w.url);
+            boolean media = "图片".equals(w.type) || "视频".equals(w.type);
+            if (pathRow != null) {
+                pathRow.setVisible(media);
+            }
+            if (urlRow != null) {
+                urlRow.setVisible("超链接".equals(w.type));
+            }
         } else {
             typeLabel.setText("—");
             fName.setText("");
@@ -462,8 +564,20 @@ public class PropertiesPane extends JPanel {
             fgWell.setColor(null);
             bgWell.setColor(null);
             fItems.setText("");
+            fPath.setText("");
+            fUrl.setText("");
+            if (pathRow != null) {
+                pathRow.setVisible(false);
+            }
+            if (urlRow != null) {
+                urlRow.setVisible(false);
+            }
         }
         updating = false;
+        if (pathRow != null) {
+            pathRow.getParent().revalidate();
+            pathRow.getParent().repaint();
+        }
     }
 
     /** 画布拖动后，只刷新几何字段 */

@@ -24,15 +24,45 @@ public class PalettePanel extends JPanel {
     public PalettePanel(Consumer<String> onAddCenter) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(new EmptyBorder(4, 0, 4, 0));
+        setBorder(new EmptyBorder(2, 0, 2, 0));
 
-        for (int i = 0; i < ComponentFactory.TYPES.length; i++) {
-            Item item = new Item(ComponentFactory.TYPES[i],
-                    ComponentFactory.GLYPHS[i], TINTS[i % TINTS.length], onAddCenter);
-            add(item);
-            add(Box.createVerticalStrut(6));
+        for (String[] group : ComponentFactory.GROUPS) {
+            add(sectionHead(group[0]));
+            for (int i = 1; i < group.length; i++) {
+                String type = group[i];
+                int idx = typeIndex(type);
+                Item item = new Item(type, ComponentFactory.GLYPHS[idx],
+                        TINTS[idx % TINTS.length], onAddCenter);
+                add(item);
+                add(Box.createVerticalStrut(5));
+            }
+            add(Box.createVerticalStrut(4));
         }
         add(Box.createVerticalGlue());
+    }
+
+    private static int typeIndex(String type) {
+        for (int i = 0; i < ComponentFactory.TYPES.length; i++) {
+            if (ComponentFactory.TYPES[i].equals(type)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** 分类标题：左侧竖条 + 分类名 */
+    private JComponent sectionHead(String name) {
+        JPanel head = new JPanel(new BorderLayout(6, 0));
+        head.setOpaque(false);
+        head.setAlignmentX(Component.LEFT_ALIGNMENT);
+        head.setBorder(new EmptyBorder(2, 4, 4, 4));
+        head.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        head.setPreferredSize(new Dimension(170, 24));
+
+        JLabel text = Theme.label(name, 11, Theme.MUTED);
+        text.setFont(Theme.ui(11, Font.BOLD));
+        head.add(text, BorderLayout.WEST);
+        return head;
     }
 
     private static class Item extends JComponent {
@@ -49,9 +79,9 @@ public class PalettePanel extends JPanel {
             this.glyph = glyph;
             this.tint = tint;
             this.onAddCenter = onAddCenter;
-            setPreferredSize(new Dimension(170, 40));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-            setMinimumSize(new Dimension(120, 40));
+            setPreferredSize(new Dimension(170, 36));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            setMinimumSize(new Dimension(120, 36));
             setAlignmentX(Component.LEFT_ALIGNMENT);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setToolTipText("拖到画布中放置，或双击直接添加");

@@ -31,7 +31,7 @@ public final class Runner {
     }
 
     public static String run(Project project) {
-        String source = CodeGenerator.generate(project);
+        String source = CodeGenerator.source(project);
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) {
             return runExternal(source, project);

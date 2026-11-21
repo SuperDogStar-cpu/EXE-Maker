@@ -27,7 +27,7 @@ public class MainFrame extends JFrame {
     private Project project = new Project();
     private final DesignCanvas canvas = new DesignCanvas();
     private final WindowMockPanel windowMock;
-    private final LogicEditor logicArea = new LogicEditor();
+    private final CodeEditor codeArea = new CodeEditor();
     private final JLabel statusLabel = Theme.label("就绪 · 把左侧组件拖到画布上开始设计", 12, Theme.MUTED);
     private final JLabel sizeLabel = Theme.label("", 12, Theme.MUTED);
 
@@ -38,10 +38,10 @@ public class MainFrame extends JFrame {
     private boolean exporting;
     private boolean dirty;
     private RoundButton mockButton;
-    private LogicWindow logicWindow;
+    private CodeWindow codeWindow;
     private JPanel rightBody;
     private RoundButton propBtn;
-    private RoundButton logicBtn;
+    private RoundButton codeBtn;
     private Timer autoSaveTimer;
     private final File autoSaveFile = new File(System.getProperty("user.home"), "应用创作器-自动保存.apcj");
 
@@ -93,13 +93,13 @@ public class MainFrame extends JFrame {
         add(buildBottom(), BorderLayout.SOUTH);
 
         props.bind(project, null);
-        logicArea.setProject(project);
-        logicArea.setOnDirty(new Runnable() {
+        codeArea.setProject(project);
+        codeArea.setOnDirty(new Runnable() {
             public void run() {
                 markDirty();
             }
         });
-        logicArea.setText(project.logic);
+        codeArea.setText(project.logic);
         updateSizeLabel();
         updateTitle();
         installShortcuts();
@@ -115,12 +115,20 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /** 代码编辑器里的内容同步回项目：逻辑页 + 手改过的完整源码 */
+    private void syncCode() {
+        project.logic = codeArea.getText();
+        if (codeWindow != null) {
+            codeWindow.commit();
+        }
+    }
+
     /** 每 15 秒自动保存：有项目文件就存项目文件，没有就存到用户目录的备份 */
     private void autoSave() {
         if (!dirty) {
             return;
         }
-        project.logic = logicArea.getText();
+        syncCode();
         File target = currentFile != null ? currentFile : autoSaveFile;
         try {
             saveAtomically(project, target);
@@ -128,8 +136,8 @@ public class MainFrame extends JFrame {
             updateTitle();
             String time = new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date());
             setStatus("已自动保存 " + time + " · " + target.getName());
-            if (logicWindow != null) {
-                logicWindow.setSaved(time + " · " + target.getName());
+            if (codeWindow != null) {
+                codeWindow.setSaved(time + " · " + target.getName());
             }
         } catch (Exception ex) {
             setStatus("自动保存失败：" + ex.getMessage());
@@ -164,7 +172,7 @@ public class MainFrame extends JFrame {
         titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
         JLabel t = Theme.label("应用创作器", 19, Theme.TEXT);
         t.setFont(Theme.ui(19, Font.BOLD));
-        JLabel s = Theme.label("拖拽搭界面 · Java 写逻辑 · 一键导出 EXE", 11, Theme.MUTED);
+        JLabel s = Theme.label("拖拽搭界面 · Java 写代码 · 一键导出 EXE", 11, Theme.MUTED);
         titles.add(t);
         titles.add(Box.createVerticalStrut(2));
         titles.add(s);
@@ -259,11 +267,18 @@ public class MainFrame extends JFrame {
         head.setBorder(new EmptyBorder(0, 4, 10, 4));
 
         card.add(head, BorderLayout.NORTH);
-        card.add(new PalettePanel(new java.util.function.Consumer<String>() {
+        PalettePanel palette = new PalettePanel(new java.util.function.Consumer<String>() {
             public void accept(String type) {
                 createWidget(type, project.width / 2, project.height / 2);
             }
-        }), BorderLayout.CENTER);
+        });
+        JScrollPane paletteScroll = new JScrollPane(palette);
+        paletteScroll.setBorder(BorderFactory.createEmptyBorder());
+        paletteScroll.setOpaque(false);
+        paletteScroll.getViewport().setOpaque(false);
+        paletteScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        paletteScroll.getVerticalScrollBar().setUnitIncrement(14);
+        card.add(paletteScroll, BorderLayout.CENTER);
 
         wrap.add(card, BorderLayout.CENTER);
         return wrap;
@@ -293,12 +308,12 @@ public class MainFrame extends JFrame {
         rightBody = body;
         body.setOpaque(false);
         body.add(props, "props");
-        body.add(buildLogicTab(), "logic");
+        body.add(buildCodeTab(), "logic");
 
         final RoundButton propButton = new RoundButton("属性", Theme.ACCENT, Color.WHITE);
-        final RoundButton logicButton = new RoundButton("逻辑", Theme.SOFT, Theme.ACCENT_DARK);
+        final RoundButton logicButton = new RoundButton("代码", Theme.SOFT, Theme.ACCENT_DARK);
         propBtn = propButton;
-        logicBtn = logicButton;
+        codeBtn = logicButton;
         propButton.setToolTipText("窗口与组件属性");
         logicButton.setToolTipText("点击打开深色代码编辑器");
 
@@ -318,7 +333,7 @@ public class MainFrame extends JFrame {
             ((CardLayout) body.getLayout()).show(body, "logic");
             logicButton.setColors(Theme.ACCENT, Color.WHITE);
             propButton.setColors(Theme.SOFT, Theme.ACCENT_DARK);
-            openLogicWindow();
+            openCodeWindow();
         });
 
         wrap.add(switchBar, BorderLayout.NORTH);
@@ -327,9 +342,9 @@ public class MainFrame extends JFrame {
     }
 
     /** 打开（必要时创建）独立的逻辑编辑窗口 */
-    private void openLogicWindow() {
-        if (logicWindow == null) {
-            logicWindow = new LogicWindow(this, logicArea,
+    private void openCodeWindow() {
+        if (codeWindow == null) {
+            codeWindow = new CodeWindow(this, codeArea,
                     new Runnable() {
                         public void run() {
                             saveProject();
@@ -339,7 +354,7 @@ public class MainFrame extends JFrame {
                             runPreview();
                         }
                     });
-            logicWindow.setOnClose(new Runnable() {
+            codeWindow.setOnClose(new Runnable() {
                 public void run() {
                     autoSave();
                     if (rightBody != null) {
@@ -348,16 +363,16 @@ public class MainFrame extends JFrame {
                     if (propBtn != null) {
                         propBtn.setColors(Theme.ACCENT, Color.WHITE);
                     }
-                    if (logicBtn != null) {
-                        logicBtn.setColors(Theme.SOFT, Theme.ACCENT_DARK);
+                    if (codeBtn != null) {
+                        codeBtn.setColors(Theme.SOFT, Theme.ACCENT_DARK);
                     }
                 }
             });
         }
-        logicWindow.open(project);
+        codeWindow.open(project);
     }
 
-    private JComponent buildLogicTab() {
+    private JComponent buildCodeTab() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(0, 4, 0, 4));
@@ -369,13 +384,13 @@ public class MainFrame extends JFrame {
         texts.setOpaque(false);
         texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
 
-        JLabel title = Theme.label("深色代码编辑器", 14, Theme.TEXT);
+        JLabel title = Theme.label("代码编辑器", 14, Theme.TEXT);
         title.setFont(Theme.ui(14, Font.BOLD));
-        JLabel l1 = Theme.label("· Java 语法高亮，关键字 / 字符串 / 注释分色", 11, Theme.MUTED);
-        JLabel l2 = Theme.label("· 智能行号：当前行高亮，错误行标红点", 11, Theme.MUTED);
-        JLabel l3 = Theme.label("· 停止输入后自动编译，错误画红色波浪线", 11, Theme.MUTED);
-        JLabel l4 = Theme.label("· 每 15 秒自动保存，Ctrl+S 立即保存", 11, Theme.MUTED);
-        JLabel l5 = Theme.label("· 独立窗口，可拖动、可最大化", 11, Theme.MUTED);
+        JLabel l1 = Theme.label("· 两页：逻辑代码 / 完整源码，都能改", 11, Theme.MUTED);
+        JLabel l2 = Theme.label("· 完整源码里可新增、删除、移动组件", 11, Theme.MUTED);
+        JLabel l3 = Theme.label("· 自动补全关键字、API 和组件变量名", 11, Theme.MUTED);
+        JLabel l4 = Theme.label("· 括号自动配对 ( ) { } [ ] < >", 11, Theme.MUTED);
+        JLabel l5 = Theme.label("· 停止输入自动查错，红色波浪线标出问题", 11, Theme.MUTED);
 
         texts.add(title);
         texts.add(Box.createVerticalStrut(10));
@@ -391,7 +406,7 @@ public class MainFrame extends JFrame {
         texts.add(Box.createVerticalStrut(16));
 
         RoundButton open = new RoundButton("打开编辑器", Theme.ACCENT, Color.WHITE);
-        open.addActionListener(e -> openLogicWindow());
+        open.addActionListener(e -> openCodeWindow());
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         btnRow.setOpaque(false);
         btnRow.add(open);
@@ -433,7 +448,7 @@ public class MainFrame extends JFrame {
         w.x = Math.max(0, cx - d.width / 2);
         w.y = Math.max(0, cy - d.height / 2);
         w.text = ComponentFactory.defaultText(type);
-        w.fg = Theme.TEXT;
+        w.fg = "超链接".equals(type) ? new Color(0x1A73E8) : Theme.TEXT;
         project.widgets.add(w);
         canvas.addWidget(w);
         props.bind(project, w);
@@ -478,10 +493,10 @@ public class MainFrame extends JFrame {
         canvas.setProject(project);
         windowMock.setProject(project);
         props.bind(project, null);
-        logicArea.setProject(project);
-        logicArea.setText(project.logic);
-        if (logicWindow != null) {
-            logicWindow.refreshProject(project);
+        codeArea.setProject(project);
+        codeArea.setText(project.logic);
+        if (codeWindow != null) {
+            codeWindow.refreshProject(project);
         }
         currentFile = null;
         counter = 0;
@@ -503,11 +518,11 @@ public class MainFrame extends JFrame {
             canvas.setProject(project);
             windowMock.setProject(project);
             props.bind(project, null);
-            logicArea.setProject(project);
-            logicArea.setText(project.logic);
-            logicArea.setCaretPosition(0);
-            if (logicWindow != null) {
-                logicWindow.refreshProject(project);
+            codeArea.setProject(project);
+            codeArea.setText(project.logic);
+            codeArea.setCaretPosition(0);
+            if (codeWindow != null) {
+                codeWindow.refreshProject(project);
             }
             currentFile = f;
             counter = 0;
@@ -521,7 +536,7 @@ public class MainFrame extends JFrame {
     }
 
     private void saveProject() {
-        project.logic = logicArea.getText();
+        syncCode();
         if (currentFile == null) {
             JFileChooser fc = chooser();
             fc.setSelectedFile(new File("我的应用.apcj"));
@@ -545,7 +560,7 @@ public class MainFrame extends JFrame {
     }
 
     private void exportJava() {
-        project.logic = logicArea.getText();
+        syncCode();
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("导出 Java 源码");
         fc.setSelectedFile(new File("AppMain.java"));
@@ -570,7 +585,7 @@ public class MainFrame extends JFrame {
             setStatus("EXE 正在导出，请稍候…");
             return;
         }
-        project.logic = logicArea.getText();
+        syncCode();
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("选择 EXE 输出文件夹");
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -629,7 +644,7 @@ public class MainFrame extends JFrame {
         if (running) {
             return;
         }
-        project.logic = logicArea.getText();
+        syncCode();
         running = true;
         setStatus("正在编译并启动预览窗口…");
         final Project snapshot = project;
@@ -748,3 +763,8 @@ public class MainFrame extends JFrame {
         });
     }
 }
+
+
+
+
+

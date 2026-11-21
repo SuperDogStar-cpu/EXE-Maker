@@ -28,6 +28,11 @@ public class Widget {
     /** 下拉框的选项，用逗号分隔 */
     public String items = "选项1, 选项2, 选项3";
 
+    /** 图片/视频控件的文件路径 */
+    public String path = "";
+    /** 超链接控件打开的网址 */
+    public String url = "https://";
+
     public Widget() {
     }
 

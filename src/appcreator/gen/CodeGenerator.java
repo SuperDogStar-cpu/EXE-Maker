@@ -23,7 +23,9 @@ public final class CodeGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("import javax.swing.*;\n");
         sb.append("import java.awt.*;\n");
-        sb.append("import java.awt.event.*;\n\n");
+        sb.append("import java.awt.event.*;\n");
+        sb.append("import java.io.File;\n");
+        sb.append("import java.net.URI;\n\n");
         sb.append("/**\n");
         sb.append(" * 由「应用创作器」生成。\n");
         sb.append(" */\n");
@@ -85,7 +87,27 @@ public final class CodeGenerator {
         sb.append("        }\n\n");
     }
 
+    /** 预览/导出真正使用的源码：手改过就用手的，否则按设计器生成 */
+    public static String source(Project p) {
+        if (p != null && p.customCode != null && p.customCode.trim().length() > 0) {
+            return p.customCode;
+        }
+        return generate(p);
+    }
+
     private static void appendWidget(StringBuilder sb, Widget w, String var) {
+        if ("图片".equals(w.type)) {
+            appendImage(sb, w, var);
+            return;
+        }
+        if ("视频".equals(w.type)) {
+            appendVideo(sb, w, var);
+            return;
+        }
+        if ("超链接".equals(w.type)) {
+            appendLink(sb, w, var);
+            return;
+        }
         String cls = ComponentFactory.className(w.type);
         String generic = "JComboBox".equals(cls) ? "<String>" : "";
 
@@ -140,6 +162,82 @@ public final class CodeGenerator {
             sb.append("        ").append(var).append(".setOpaque(false);\n");
         }
 
+        sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
+                .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
+        sb.append("        root.add(").append(var).append(");\n\n");
+    }
+
+    /** 图片控件：ImageIcon 按控件尺寸等比铺满 */
+    private static void appendImage(StringBuilder sb, Widget w, String var) {
+        sb.append("        JLabel ").append(var).append(" = new JLabel();\n");
+        if (w.path == null || w.path.trim().isEmpty()) {
+            sb.append("        ").append(var).append(".setText(\"图片（未选择）\");\n");
+            sb.append("        ").append(var).append(".setHorizontalAlignment(SwingConstants.CENTER);\n");
+        } else {
+            sb.append("        ImageIcon ").append(var).append("Icon = new ImageIcon(")
+                    .append(quote(w.path)).append(");\n");
+            sb.append("        ").append(var).append(".setIcon(new ImageIcon(").append(var)
+                    .append("Icon.getImage().getScaledInstance(").append(Math.max(1, w.w)).append(", ")
+                    .append(Math.max(1, w.h)).append(", Image.SCALE_SMOOTH)));\n");
+            sb.append("        ").append(var).append(".setHorizontalAlignment(SwingConstants.CENTER);\n");
+        }
+        sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
+                .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
+        sb.append("        root.add(").append(var).append(");\n\n");
+    }
+
+    /** 视频控件：显示文件名，双击用系统默认播放器打开 */
+    private static void appendVideo(StringBuilder sb, Widget w, String var) {
+        String name = ComponentFactory.fileName(w.path);
+        sb.append("        JLabel ").append(var).append(" = new JLabel(")
+                .append(quote("视频 · " + (name.isEmpty() ? "未选择文件" : name)))
+                .append(", SwingConstants.CENTER);\n");
+        sb.append("        ").append(var).append(".setOpaque(true);\n");
+        sb.append("        ").append(var).append(".setBackground(new Color(0xEEF4F2));\n");
+        sb.append("        ").append(var).append(".setFont(new Font(\"微软雅黑\", Font.PLAIN, ")
+                .append(w.fontSize).append("));\n");
+        sb.append("        ").append(var).append(".setForeground(").append(color(w.fg)).append(");\n");
+        sb.append("        ").append(var).append(".setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));\n");
+        sb.append("        ").append(var).append(".setToolTipText(\"双击用系统播放器打开视频\");\n");
+        sb.append("        ").append(var).append(".addMouseListener(new MouseAdapter() {\n");
+        sb.append("            public void mouseClicked(MouseEvent e) {\n");
+        sb.append("                if (e.getClickCount() == 2) {\n");
+        sb.append("                    try {\n");
+        sb.append("                        Desktop.getDesktop().open(new File(").append(quote(w.path)).append("));\n");
+        sb.append("                    } catch (Exception ex) {\n");
+        sb.append("                    }\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("        });\n");
+        sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
+                .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
+        sb.append("        root.add(").append(var).append(");\n\n");
+    }
+
+    /** 超链接控件：带下划线文字，双击用系统浏览器打开网址 */
+    private static void appendLink(StringBuilder sb, Widget w, String var) {
+        String text = w.text == null ? "" : w.text;
+        sb.append("        JLabel ").append(var).append(" = new JLabel(")
+                .append(quote("<html><u>" + ComponentFactory.escapeHtml(text) + "</u></html>")).append(");\n");
+        sb.append("        ").append(var).append(".setFont(new Font(\"微软雅黑\", Font.PLAIN, ")
+                .append(w.fontSize).append("));\n");
+        sb.append("        ").append(var).append(".setForeground(").append(color(w.fg)).append(");\n");
+        sb.append("        ").append(var).append(".setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));\n");
+        sb.append("        ").append(var).append(".setToolTipText(").append(quote("双击打开：" + w.url)).append(");\n");
+        sb.append("        ").append(var).append(".addMouseListener(new MouseAdapter() {\n");
+        sb.append("            public void mouseClicked(MouseEvent e) {\n");
+        sb.append("                if (e.getClickCount() == 2) {\n");
+        sb.append("                    try {\n");
+        sb.append("                        Desktop.getDesktop().browse(new URI(").append(quote(w.url)).append("));\n");
+        sb.append("                    } catch (Exception ex) {\n");
+        sb.append("                    }\n");
+        sb.append("                }\n");
+        sb.append("            }\n");
+        sb.append("        });\n");
+        if (w.bg != null) {
+            sb.append("        ").append(var).append(".setOpaque(true);\n");
+            sb.append("        ").append(var).append(".setBackground(").append(color(w.bg)).append(");\n");
+        }
         sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
                 .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
         sb.append("        root.add(").append(var).append(");\n\n");

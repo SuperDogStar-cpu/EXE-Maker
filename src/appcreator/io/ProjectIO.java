@@ -50,6 +50,12 @@ public final class ProjectIO {
                 out.writeBoolean(false);
             }
             writeText(out, p.iconName == null ? "" : p.iconName);
+            // 组件附件：图片/视频路径、超链接网址（新版本追加，老文件读不到就跳过）
+            out.writeInt(p.widgets.size());
+            for (Widget w : p.widgets) {
+                writeText(out, w.path == null ? "" : w.path);
+                writeText(out, w.url == null ? "" : w.url);
+            }
         } finally {
             out.close();
         }
@@ -108,6 +114,17 @@ public final class ProjectIO {
             } catch (java.io.EOFException ignored) {
                 p.iconPng = null;
                 p.iconName = "";
+            }
+            // 组件附件：老文件没有这一段，读不到就保持默认
+            try {
+                int m = in.readInt();
+                for (int i = 0; i < m && i < p.widgets.size(); i++) {
+                    Widget w = p.widgets.get(i);
+                    w.path = readText(in);
+                    w.url = readText(in);
+                }
+            } catch (java.io.EOFException ignored) {
+                // 老项目文件，忽略
             }
             return p;
         } finally {
