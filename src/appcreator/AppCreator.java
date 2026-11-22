@@ -47,6 +47,13 @@ public class AppCreator {
                     step("正在后台下载韩文字体…");
                     appcreator.ui.Fonts.prepareKoreanFontAsync();
                 }
+                // 下载教程（4 份 .md），失败就用 jar 里内置的那份
+                step("正在下载教程…");
+                appcreator.io.TutorialSync.sync(new appcreator.io.TutorialSync.Listener() {
+                    public void step(String text) {
+                        AppCreator.step(text);
+                    }
+                });
                 // 下载 .NET 工具箱组件数据（容器/菜单/数据/输入/对话框等），失败就用内置那份
                 step("正在下载组件数据…");
                 appcreator.io.ComponentData.sync();

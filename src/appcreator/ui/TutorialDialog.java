@@ -1,92 +1,258 @@
 package appcreator.ui;
 
 import appcreator.io.Lang;
+import appcreator.io.TutorialSync;
 
 import javax.swing.*;
-import javax.swing.text.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Document;
+import javax.swing.text.Highlighter;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 「教程」窗口：内置四份教程，用标签页分开，内容随程序一起打包（也能读程序目录里的同名 .md）。
+ * 「教程」窗口：左侧目录 + 右侧正文（Markdown 转 HTML 渲染），顶部带搜索。
+ *
+ * 内容优先顺序：程序目录里的同名 .md（方便自己改） → 启动时下载到
+ * 用户目录 .appcreator/tutorial 的那份 → jar 里内置的一份。
  */
 public final class TutorialDialog extends JDialog {
 
-    /** 标签名, 资源路径, 程序目录里的文件名 */
+    /** 目录名, 文件名 */
     private static final String[][] DOCS = {
-            {"快速上手", "/appcreator/tutorial/快速上手.md", "快速上手.md"},
-            {"逻辑代码", "/appcreator/tutorial/控件逻辑代码.md", "控件逻辑代码.md"},
-            {"Java 基础", "/appcreator/tutorial/Java基础语法.md", "Java基础语法.md"},
-            {"延迟与内置库", "/appcreator/tutorial/Java延迟与内置库.md", "Java延迟与内置库.md"}
+            {"快速上手", "快速上手.md"},
+            {"逻辑代码", "控件逻辑代码.md"},
+            {"Java 基础", "Java基础语法.md"},
+            {"延迟与内置库", "Java延迟与内置库.md"}
     };
+
+    private static final Color HIT = new Color(0xFFF1B0);
+    private static final Color HIT_CUR = new Color(0xFFC94D);
+
+    private final JEditorPane pane = new JEditorPane();
+    private final JList<String> list;
+    private final JTextField search = new JTextField();
+    private final JLabel status = new JLabel("0 / 0");
+    private final Map<String, String> cache = new HashMap<String, String>();
+    private final List<long[]> hits = new ArrayList<long[]>();
+    private int hitIndex = -1;
+    private int fontSize = 13;
+    private int docIndex = 0;
 
     public TutorialDialog(Window owner) {
         super(owner, Lang.t("教程"), ModalityType.MODELESS);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.setFont(new Font(Fonts.familyForText("教程"), Font.PLAIN, 13));
-        for (String[] doc : DOCS) {
-            JComponent page = page(doc[1], doc[2]);
-            tabs.addTab(Lang.t(doc[0]), page);
+        DefaultListModel<String> model = new DefaultListModel<String>();
+        for (String[] d : DOCS) {
+            model.addElement(Lang.t(d[0]));
         }
-
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Color.WHITE);
-        root.add(tabs, BorderLayout.CENTER);
-        setContentPane(root);
-        setSize(940, 700);
-        setMinimumSize(new Dimension(560, 360));
-        setLocationRelativeTo(owner);
-    }
-
-    private JComponent page(String resource, String fileName) {
-        JTextPane pane = new JTextPane();
-        pane.setEditable(false);
-        pane.setBackground(Color.WHITE);
-        pane.setBorder(new javax.swing.border.EmptyBorder(14, 18, 18, 18));
-        render(pane, load(resource, fileName));
-        pane.setCaretPosition(0);
-
-        JScrollPane sp = new JScrollPane(pane);
-        sp.setBorder(null);
-        sp.getVerticalScrollBar().setUnitIncrement(18);
-        return sp;
-    }
-
-    /** 先读程序内置的那份，其次读程序目录里的 .md */
-    private String load(String resource, String fileName) {
-        InputStream in = null;
-        try {
-            in = TutorialDialog.class.getResourceAsStream(resource);
-            if (in != null) {
-                return read(in);
+        list = new JList<String>(model);
+        list.setSelectedIndex(0);
+        list.setFont(new Font(Fonts.familyForText("教程"), Font.PLAIN, 13));
+        list.setFixedCellHeight(42);
+        list.setBackground(Color.WHITE);
+        list.setCellRenderer(new SideRenderer());
+        list.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && list.getSelectedIndex() >= 0) {
+                docIndex = list.getSelectedIndex();
+                loadDoc();
             }
-        } catch (Exception ignored) {
-            // 资源读不到就走文件
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (Exception ignored) {
+        });
+
+        JPanel side = new JPanel(new BorderLayout());
+        side.setBackground(Color.WHITE);
+        side.setPreferredSize(new Dimension(178, 10));
+        JLabel sideTitle = new JLabel("  " + Lang.t("教程"));
+        sideTitle.setFont(new Font(Fonts.familyForText("教程"), Font.BOLD, 12));
+        sideTitle.setForeground(Theme.ACCENT_DARK);
+        sideTitle.setBorder(new EmptyBorder(14, 8, 10, 8));
+        side.add(sideTitle, BorderLayout.NORTH);
+        JScrollPane sideScroll = new JScrollPane(list);
+        sideScroll.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+        side.add(sideScroll, BorderLayout.CENTER);
+
+        pane.setEditable(false);
+        pane.setContentType("text/html");
+        pane.setBackground(Color.WHITE);
+        pane.setBorder(new EmptyBorder(4, 6, 6, 6));
+        pane.addHyperlinkListener(new HyperlinkListener() {
+            public void hyperlinkUpdate(HyperlinkEvent e) {
+                if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                    openLink(e.getURL());
                 }
             }
+        });
+
+        JScrollPane scroll = new JScrollPane(pane);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(18);
+
+        JPanel bar = new JPanel(new BorderLayout(8, 0));
+        bar.setBackground(Theme.BG);
+        bar.setBorder(new EmptyBorder(8, 10, 6, 10));
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        left.setOpaque(false);
+        search.setPreferredSize(new Dimension(230, 26));
+        search.setFont(new Font(Fonts.familyForText("搜索"), Font.PLAIN, 12));
+        search.setToolTipText("搜索当前教程，回车跳到下一处");
+        search.addActionListener(e -> nextHit(1));
+        search.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    search.setText("");
+                }
+            }
+        });
+        JButton prev = tool("▲", "上一处");
+        prev.addActionListener(e -> nextHit(-1));
+        JButton next = tool("▼", "下一处");
+        next.addActionListener(e -> nextHit(1));
+        status.setFont(new Font(Fonts.familyForText("0"), Font.PLAIN, 11));
+        status.setForeground(Theme.MUTED);
+        left.add(search);
+        left.add(prev);
+        left.add(next);
+        left.add(status);
+        bar.add(left, BorderLayout.WEST);
+
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        right.setOpaque(false);
+        JButton minus = tool("A-", "字号减小");
+        minus.addActionListener(e -> zoom(-1));
+        JButton plus = tool("A+", "字号增大");
+        plus.addActionListener(e -> zoom(1));
+        right.add(minus);
+        right.add(plus);
+        bar.add(right, BorderLayout.EAST);
+
+        JPanel center = new JPanel(new BorderLayout());
+        center.setBackground(Color.WHITE);
+        center.add(bar, BorderLayout.NORTH);
+        center.add(scroll, BorderLayout.CENTER);
+
+        JLabel hint = new JLabel("  Ctrl+F 搜索　·　双击链接用浏览器打开　·　Esc 关闭");
+        hint.setFont(new Font(Fonts.familyForText("提"), Font.PLAIN, 11));
+        hint.setForeground(Theme.MUTED);
+        hint.setOpaque(true);
+        hint.setBackground(Color.WHITE);
+        hint.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.BORDER), new EmptyBorder(5, 8, 6, 8)));
+        center.add(hint, BorderLayout.SOUTH);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(Theme.BG);
+        root.add(side, BorderLayout.WEST);
+        root.add(center, BorderLayout.CENTER);
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "closeDlg");
+        root.getActionMap().put("closeDlg", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        });
+        setContentPane(root);
+
+        pane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), "focusSearch");
+        pane.getActionMap().put("focusSearch", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                search.requestFocusInWindow();
+                search.selectAll();
+            }
+        });
+        search.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), "focusSearch");
+        search.getActionMap().put("focusSearch", new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                search.requestFocusInWindow();
+                search.selectAll();
+            }
+        });
+
+        setSize(980, 720);
+        setMinimumSize(new Dimension(620, 400));
+        setLocationRelativeTo(owner);
+        loadDoc();
+    }
+
+    // ---------------- 文档加载 ----------------
+
+    private JButton tool(String text, String tip) {
+        JButton b = new JButton(text);
+        b.setFont(new Font(Fonts.familyForText(text), Font.PLAIN, 11));
+        b.setFocusable(false);
+        b.setMargin(new Insets(2, 8, 2, 8));
+        b.setToolTipText(tip);
+        b.setBackground(Color.WHITE);
+        b.setForeground(Theme.TEXT);
+        return b;
+    }
+
+    private void loadDoc() {
+        String md = cache.get(DOCS[docIndex][1]);
+        if (md == null) {
+            md = load(DOCS[docIndex][1]);
+            cache.put(DOCS[docIndex][1], md);
         }
+        String family = Fonts.familyForText("中文");
+        pane.setText(Markdown.toHtml(md, fontSize, family));
+        pane.setCaretPosition(0);
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                pane.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
+                search.setText(search.getText());
+                refreshHits();
+            }
+        });
+    }
+
+    private String load(String fileName) {
+        // 1) 程序目录里的同名 md（用户自己改过的）
         try {
             File f = new File(fileName);
             if (f.isFile()) {
                 return read(new FileInputStream(f));
             }
         } catch (Exception ignored) {
-            // 都不行就给提示
         }
-        return "# " + fileName + "\n\n教程内容没找到，把 " + fileName + " 放到程序目录下即可。";
+        // 2) 启动时下载到用户目录的
+        try {
+            File f = TutorialSync.local(fileName);
+            if (f != null) {
+                return read(new FileInputStream(f));
+            }
+        } catch (Exception ignored) {
+        }
+        // 3) jar 里内置的
+        InputStream in = null;
+        try {
+            in = TutorialDialog.class.getResourceAsStream("/appcreator/tutorial/" + fileName);
+            if (in != null) {
+                return read(in);
+            }
+        } catch (Exception ignored) {
+            // 走兜底提示
+        } finally {
+            close(in);
+        }
+        return "# " + fileName + "\n\n教程内容没找到。检查网络后重启，程序会自动下载到\n`~/.appcreator/tutorial`。";
     }
 
     private static String read(InputStream in) throws java.io.IOException {
@@ -100,126 +266,134 @@ public final class TutorialDialog extends JDialog {
         return sb.toString();
     }
 
-    // ---------------- 简易 Markdown 渲染 ----------------
-
-    private static void render(JTextPane pane, String md) {
-        StyledDocument doc = pane.getStyledDocument();
-        for (Object[] s : styles()) {
-            Style st = doc.addStyle((String) s[0], null);
-            st.addAttributes((AttributeSet) s[1]);
-        }
-        String[] lines = md.replace("\r\n", "\n").replace("\r", "\n").split("\n", -1);
-        boolean code = false;
-        for (String raw : lines) {
-            String line = raw;
-            if (line.startsWith("```")) {
-                code = !code;
-                if (!code) {
-                    insert(doc, "\n", "plain");
-                }
-                continue;
-            }
-            if (code) {
-                insert(doc, line + "\n", "code");
-                continue;
-            }
-            if (line.trim().length() == 0) {
-                insert(doc, "\n", "plain");
-            } else if (line.startsWith("### ")) {
-                insert(doc, line.substring(4) + "\n", "h3");
-            } else if (line.startsWith("## ")) {
-                insert(doc, line.substring(3) + "\n", "h2");
-            } else if (line.startsWith("# ")) {
-                insert(doc, line.substring(2) + "\n", "h1");
-            } else if (line.startsWith("- ")) {
-                insert(doc, "  \u00B7  ", "bullet");
-                inline(doc, line.substring(2), "bullet");
-                insert(doc, "\n", "bullet");
-            } else if (line.matches("^\\d+\\..*")) {
-                inline(doc, line, "bullet");
-                insert(doc, "\n", "bullet");
-            } else {
-                inline(doc, line, "plain");
-                insert(doc, "\n", "plain");
+    private static void close(InputStream in) {
+        if (in != null) {
+            try {
+                in.close();
+            } catch (Exception ignored) {
             }
         }
     }
 
-    private static void inline(StyledDocument doc, String text, String base) {
-        StringBuilder buf = new StringBuilder();
-        int i = 0;
-        while (i < text.length()) {
-            if (text.startsWith("**", i)) {
-                int end = text.indexOf("**", i + 2);
-                if (end > 0) {
-                    insert(doc, buf.toString(), base);
-                    buf.setLength(0);
-                    insert(doc, text.substring(i + 2, end), "bold");
-                    i = end + 2;
-                    continue;
-                }
+    private void openLink(java.net.URL url) {
+        try {
+            if (url != null && (url.getProtocol().equals("http") || url.getProtocol().equals("https"))) {
+                Desktop.getDesktop().browse(url.toURI());
             }
-            if (text.charAt(i) == '`') {
-                int end = text.indexOf('`', i + 1);
-                if (end > 0) {
-                    insert(doc, buf.toString(), base);
-                    buf.setLength(0);
-                    insert(doc, text.substring(i + 1, end), "inline");
-                    i = end + 1;
-                    continue;
-                }
-            }
-            buf.append(text.charAt(i));
-            i++;
+        } catch (Exception ignored) {
+            // 打开失败就什么也不做
         }
-        insert(doc, buf.toString(), base);
     }
 
-    private static void insert(StyledDocument doc, String text, String style) {
-        if (text.length() == 0) {
+    // ---------------- 搜索 ----------------
+
+    private void nextHit(int dir) {
+        refreshHits();
+        if (hits.isEmpty()) {
             return;
         }
+        hitIndex = (hitIndex + dir + hits.size()) % hits.size();
+        showHit(hitIndex);
+    }
+
+    private void refreshHits() {
+        Highlighter hl = pane.getHighlighter();
+        hl.removeAllHighlights();
+        hits.clear();
+        hitIndex = -1;
+        String key = search.getText();
+        if (key == null || key.trim().length() == 0) {
+            status.setText("0 / 0");
+            return;
+        }
+        key = key.trim().toLowerCase();
+        String plain;
         try {
-            doc.insertString(doc.getLength(), text, doc.getStyle(style));
-        } catch (BadLocationException ignored) {
+            Document doc = pane.getDocument();
+            plain = doc.getText(0, doc.getLength());
+        } catch (Exception e) {
+            status.setText("0 / 0");
+            return;
+        }
+        String lower = plain.toLowerCase();
+        int from = 0;
+        while (true) {
+            int p = lower.indexOf(key, from);
+            if (p < 0 || hits.size() >= 400) {
+                break;
+            }
+            hits.add(new long[]{p, p + key.length()});
+            from = p + key.length();
+        }
+        try {
+            for (int i = 0; i < hits.size(); i++) {
+                hl.addHighlight((int) hits.get(i)[0], (int) hits.get(i)[1],
+                        new DefaultHighlighter.DefaultHighlightPainter(HIT));
+            }
+        } catch (Exception ignored) {
+        }
+        status.setText(hits.isEmpty() ? "没有找到" : ("1 / " + hits.size()));
+        if (!hits.isEmpty()) {
+            hitIndex = 0;
+            showHit(0);
         }
     }
 
-    private static List<Object[]> styles() {
-        List<Object[]> list = new ArrayList<Object[]>();
-        list.add(new Object[]{"plain", style(13, Font.PLAIN, new Color(0x22312E), new Color(0xFFFFFF), 0)});
-        list.add(new Object[]{"bold", style(13, Font.BOLD, new Color(0x1E4F46), new Color(0xFFFFFF), 0)});
-        list.add(new Object[]{"h1", style(20, Font.BOLD, new Color(0x18876F), new Color(0xFFFFFF), 14)});
-        list.add(new Object[]{"h2", style(16, Font.BOLD, new Color(0x2C7A6B), new Color(0xFFFFFF), 14)});
-        list.add(new Object[]{"h3", style(14, Font.BOLD, new Color(0x3A4A46), new Color(0xFFFFFF), 10)});
-        list.add(new Object[]{"bullet", style(13, Font.PLAIN, new Color(0x22312E), new Color(0xFFFFFF), 0)});
-        list.add(new Object[]{"code", codeStyle(new Color(0x1F3D3A), new Color(0xF3F8F7))});
-        list.add(new Object[]{"inline", codeStyle(new Color(0x1F6F5F), new Color(0xEEF6F4))});
-        return list;
+    private void showHit(int idx) {
+        if (idx < 0 || idx >= hits.size()) {
+            return;
+        }
+        int start = (int) hits.get(idx)[0];
+        int end = (int) hits.get(idx)[1];
+        try {
+            Highlighter hl = pane.getHighlighter();
+            hl.removeAllHighlights();
+            for (int i = 0; i < hits.size(); i++) {
+                Color c = i == idx ? HIT_CUR : HIT;
+                hl.addHighlight((int) hits.get(i)[0], (int) hits.get(i)[1],
+                        new DefaultHighlighter.DefaultHighlightPainter(c));
+            }
+            java.awt.Rectangle r = pane.modelToView(start);
+            if (r != null) {
+                java.awt.Rectangle vis = new java.awt.Rectangle(r.x, Math.max(0, r.y - 60), r.width, r.height + 120);
+                pane.scrollRectToVisible(vis);
+            }
+        } catch (Exception ignored) {
+        }
+        status.setText((idx + 1) + " / " + hits.size());
+        hitIndex = idx;
     }
 
-    private static AttributeSet style(int size, int fontStyle, Color fg, Color bg, int spaceAbove) {
-        SimpleAttributeSet s = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(s, Fonts.familyForText("中"));
-        StyleConstants.setFontSize(s, size);
-        StyleConstants.setBold(s, fontStyle == Font.BOLD);
-        StyleConstants.setItalic(s, fontStyle == Font.ITALIC);
-        StyleConstants.setForeground(s, fg);
-        StyleConstants.setBackground(s, bg);
-        StyleConstants.setSpaceAbove(s, spaceAbove);
-        StyleConstants.setSpaceBelow(s, spaceAbove >= 6 ? 6 : 2);
-        return s;
+    // ---------------- 字号 ----------------
+
+    private void zoom(int delta) {
+        int next = Math.max(9, Math.min(24, fontSize + delta));
+        if (next == fontSize) {
+            return;
+        }
+        fontSize = next;
+        loadDoc();
     }
 
-    private static AttributeSet codeStyle(Color fg, Color bg) {
-        SimpleAttributeSet s = new SimpleAttributeSet();
-        StyleConstants.setFontFamily(s, "Consolas");
-        StyleConstants.setFontSize(s, 12);
-        StyleConstants.setForeground(s, fg);
-        StyleConstants.setBackground(s, bg);
-        StyleConstants.setSpaceAbove(s, 1);
-        StyleConstants.setSpaceBelow(s, 1);
-        StyleConstants.setLeftIndent(s, 12f);
-        return s;
+    // ---------------- 左侧目录渲染 ----------------
+
+    private static final class SideRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                     boolean selected, boolean focus) {
+            JLabel c = (JLabel) super.getListCellRendererComponent(list, value, index, selected, focus);
+            c.setBorder(new EmptyBorder(0, 14, 0, 8));
+            c.setOpaque(true);
+            if (selected) {
+                c.setBackground(Theme.ACCENT);
+                c.setForeground(Color.WHITE);
+                c.setFont(new Font(Fonts.familyForText(String.valueOf(value)), Font.BOLD, 13));
+            } else {
+                c.setBackground(Color.WHITE);
+                c.setForeground(Theme.TEXT);
+                c.setFont(new Font(Fonts.familyForText(String.valueOf(value)), Font.PLAIN, 13));
+            }
+            return c;
+        }
     }
 }
