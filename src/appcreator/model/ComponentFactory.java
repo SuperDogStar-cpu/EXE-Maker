@@ -1,5 +1,6 @@
 package appcreator.model;
 
+import appcreator.io.ComponentData;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -58,15 +59,166 @@ public final class ComponentFactory {
     }
 
     public static String className(String type) {
+        ComponentData.Entry e = ComponentData.get(type);
+        if (e != null) {
+            return extraClass(e.kind);
+        }
         return CLASSES[indexOf(type)];
     }
 
     public static String prefix(String type) {
+        ComponentData.Entry e = ComponentData.get(type);
+        if (e != null) {
+            return extraPrefix(e.kind);
+        }
         return PREFIXES[indexOf(type)];
+    }
+
+    /** 下载数据里的组件：生成的代码用的 Swing 类名 */
+    public static String extraClass(String kind) {
+        if ("button".equals(kind)) {
+            return "JButton";
+        }
+        if ("label".equals(kind) || "linklabel".equals(kind) || "menubar".equals(kind)
+                || "statusbar".equals(kind) || "nonvisual".equals(kind) || "folder".equals(kind)
+                || "color".equals(kind)) {
+            return "JLabel";
+        }
+        if ("textfield".equals(kind) || "datetime".equals(kind)) {
+            return "JTextField";
+        }
+        if ("textarea".equals(kind)) {
+            return "JTextArea";
+        }
+        if ("checkbox".equals(kind)) {
+            return "JCheckBox";
+        }
+        if ("radio".equals(kind)) {
+            return "JRadioButton";
+        }
+        if ("combo".equals(kind)) {
+            return "JComboBox";
+        }
+        if ("list".equals(kind) || "checkedlist".equals(kind)) {
+            return "JList";
+        }
+        if ("spinner".equals(kind)) {
+            return "JSpinner";
+        }
+        if ("progress".equals(kind)) {
+            return "JProgressBar";
+        }
+        if ("slider".equals(kind)) {
+            return "JSlider";
+        }
+        if ("scrollbar-h".equals(kind) || "scrollbar-v".equals(kind)) {
+            return "JScrollBar";
+        }
+        if ("table".equals(kind)) {
+            return "JTable";
+        }
+        if ("tree".equals(kind)) {
+            return "JTree";
+        }
+        if ("tabs".equals(kind)) {
+            return "JTabbedPane";
+        }
+        if ("split".equals(kind)) {
+            return "JSplitPane";
+        }
+        if ("group".equals(kind) || "panel".equals(kind) || "toolbar".equals(kind)
+                || "calendar".equals(kind)) {
+            return "JPanel";
+        }
+        return "JLabel";
+    }
+
+    /** 下载数据里的组件：变量名前缀 */
+    public static String extraPrefix(String kind) {
+        if ("button".equals(kind)) {
+            return "button";
+        }
+        if ("textfield".equals(kind) || "datetime".equals(kind)) {
+            return "textField";
+        }
+        if ("textarea".equals(kind)) {
+            return "richText";
+        }
+        if ("checkbox".equals(kind)) {
+            return "checkBox";
+        }
+        if ("radio".equals(kind)) {
+            return "radioButton";
+        }
+        if ("combo".equals(kind)) {
+            return "comboBox";
+        }
+        if ("list".equals(kind)) {
+            return "list";
+        }
+        if ("checkedlist".equals(kind)) {
+            return "checkedList";
+        }
+        if ("spinner".equals(kind)) {
+            return "numeric";
+        }
+        if ("progress".equals(kind)) {
+            return "progressBar";
+        }
+        if ("slider".equals(kind)) {
+            return "trackBar";
+        }
+        if ("scrollbar-h".equals(kind)) {
+            return "hScrollBar";
+        }
+        if ("scrollbar-v".equals(kind)) {
+            return "vScrollBar";
+        }
+        if ("table".equals(kind)) {
+            return "dataGrid";
+        }
+        if ("tree".equals(kind)) {
+            return "treeView";
+        }
+        if ("tabs".equals(kind)) {
+            return "tabControl";
+        }
+        if ("split".equals(kind)) {
+            return "splitContainer";
+        }
+        if ("group".equals(kind)) {
+            return "groupBox";
+        }
+        if ("panel".equals(kind)) {
+            return "panel";
+        }
+        if ("toolbar".equals(kind)) {
+            return "toolStrip";
+        }
+        if ("statusbar".equals(kind)) {
+            return "statusStrip";
+        }
+        if ("menubar".equals(kind)) {
+            return "menuStrip";
+        }
+        if ("calendar".equals(kind)) {
+            return "monthCalendar";
+        }
+        if ("linklabel".equals(kind)) {
+            return "linkLabel";
+        }
+        if ("nonvisual".equals(kind) || "folder".equals(kind) || "color".equals(kind)) {
+            return "component";
+        }
+        return "label";
     }
 
     /** 新建组件时的默认尺寸 */
     public static Dimension defaultSize(String type) {
+        ComponentData.Entry e = ComponentData.get(type);
+        if (e != null) {
+            return new Dimension(e.w, e.h);
+        }
         if ("标签".equals(type)) {
             return new Dimension(96, 26);
         }
@@ -102,6 +254,10 @@ public final class ComponentFactory {
 
     /** 新建组件时的默认文本 */
     public static String defaultText(String type) {
+        ComponentData.Entry e = ComponentData.get(type);
+        if (e != null) {
+            return e.text;
+        }
         if ("标签".equals(type)) {
             return "标签文本";
         }
@@ -129,7 +285,10 @@ public final class ComponentFactory {
     /** 根据模型创建真实 Swing 组件（与生成的代码完全一致的控件类型） */
     public static JComponent create(Widget w) {
         JComponent c;
-        if ("标签".equals(w.type)) {
+        ComponentData.Entry entry = ComponentData.get(w.type);
+        if (entry != null) {
+            c = createExtra(entry, w);
+        } else if ("标签".equals(w.type)) {
             c = new JLabel();
         } else if ("按钮".equals(w.type)) {
             c = new JButton();
@@ -204,6 +363,197 @@ public final class ComponentFactory {
         return BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(0xE3EBE8), 1, true),
                 new EmptyBorder(topBottom, leftRight, topBottom, leftRight));
+    }
+
+    // ------------------------------------------------------------------
+    // 下载数据里的 .NET 工具箱组件（Panel、DataGridView、TreeView、MenuStrip…）
+    // 设计器和生成的代码用同一套 Swing 对应实现
+    // ------------------------------------------------------------------
+
+    private static JComponent createExtra(ComponentData.Entry e, Widget w) {
+        String k = e.kind;
+        String text = w.text == null ? "" : w.text;
+        if ("button".equals(k)) {
+            return new JButton();
+        }
+        if ("label".equals(k)) {
+            return new JLabel();
+        }
+        if ("linklabel".equals(k)) {
+            JLabel l = new JLabel();
+            l.setForeground(new Color(0x1A73E8));
+            return l;
+        }
+        if ("textfield".equals(k) || "datetime".equals(k)) {
+            JTextField f = new JTextField();
+            f.setBorder(inputBorder(4, 8));
+            return f;
+        }
+        if ("textarea".equals(k)) {
+            JTextArea a = new JTextArea();
+            a.setBorder(inputBorder(6, 9));
+            return a;
+        }
+        if ("checkbox".equals(k)) {
+            return new JCheckBox();
+        }
+        if ("radio".equals(k)) {
+            return new JRadioButton();
+        }
+        if ("combo".equals(k)) {
+            return new JComboBox<String>();
+        }
+        if ("list".equals(k)) {
+            return wrapScroll(new JList<String>(new String[]{"项目 1", "项目 2", "项目 3"}));
+        }
+        if ("checkedlist".equals(k)) {
+            return wrapScroll(new JList<String>(new String[]{"选项 1", "选项 2", "选项 3"}));
+        }
+        if ("spinner".equals(k)) {
+            return new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
+        }
+        if ("progress".equals(k)) {
+            JProgressBar bar = new JProgressBar(0, 100);
+            bar.setValue(60);
+            return bar;
+        }
+        if ("slider".equals(k)) {
+            return new JSlider(0, 100, 50);
+        }
+        if ("scrollbar-h".equals(k)) {
+            return new JScrollBar(Adjustable.HORIZONTAL);
+        }
+        if ("scrollbar-v".equals(k)) {
+            return new JScrollBar(Adjustable.VERTICAL);
+        }
+        if ("table".equals(k)) {
+            JTable t = new JTable(new Object[][]{{"行 1", 1}, {"行 2", 2}},
+                    new String[]{"名称", "数值"});
+            t.setRowHeight(24);
+            return wrapScroll(t);
+        }
+        if ("tree".equals(k)) {
+            javax.swing.tree.DefaultMutableTreeNode root =
+                    new javax.swing.tree.DefaultMutableTreeNode("根节点");
+            root.add(new javax.swing.tree.DefaultMutableTreeNode("节点 1"));
+            root.add(new javax.swing.tree.DefaultMutableTreeNode("节点 2"));
+            JTree t = new JTree(root);
+            t.setRowHeight(22);
+            for (int i = 0; i < t.getRowCount(); i++) {
+                t.expandRow(i);
+            }
+            return wrapScroll(t);
+        }
+        if ("tabs".equals(k)) {
+            JTabbedPane tabs = new JTabbedPane();
+            tabs.addTab("选项卡 1", new JPanel());
+            tabs.addTab("选项卡 2", new JPanel());
+            return tabs;
+        }
+        if ("split".equals(k)) {
+            JPanel left = new JPanel();
+            left.setBackground(new Color(0xF7FBFA));
+            JPanel right = new JPanel();
+            right.setBackground(new Color(0xFFFFFF));
+            JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
+            split.setDividerLocation(0.45);
+            return split;
+        }
+        if ("panel".equals(k)) {
+            JPanel p = new JPanel();
+            p.setBackground(new Color(0xF4FAF8));
+            p.setBorder(new LineBorder(new Color(0xDCE7E4), 1));
+            return p;
+        }
+        if ("group".equals(k)) {
+            JPanel p = new JPanel();
+            p.setBackground(Color.WHITE);
+            p.setBorder(BorderFactory.createTitledBorder(
+                    new LineBorder(new Color(0xDCE7E4), 1), text.isEmpty() ? "分组框" : text));
+            return p;
+        }
+        if ("toolbar".equals(k)) {
+            JToolBar bar = new JToolBar();
+            bar.setFloatable(false);
+            bar.add(new JButton("新建"));
+            bar.add(new JButton("保存"));
+            return bar;
+        }
+        if ("statusbar".equals(k)) {
+            JLabel l = new JLabel(text.isEmpty() ? "就绪" : text);
+            l.setOpaque(true);
+            l.setBackground(new Color(0xF0F4F3));
+            l.setBorder(new EmptyBorder(0, 8, 0, 0));
+            return l;
+        }
+        if ("menubar".equals(k)) {
+            JLabel l = new JLabel(text.isEmpty() ? "文件  编辑  视图" : text);
+            l.setOpaque(true);
+            l.setBackground(new Color(0xF0F4F3));
+            l.setBorder(new EmptyBorder(0, 10, 0, 0));
+            return l;
+        }
+        if ("calendar".equals(k)) {
+            return new CalendarPanel();
+        }
+        // 颜色 / 文件夹 / 计时器这类没有可视化外观的，画成一个小标签块
+        JLabel chip = new JLabel(text.isEmpty() ? e.name : text, SwingConstants.CENTER);
+        chip.setOpaque(true);
+        chip.setBackground(new Color(0xEEF4F2));
+        chip.setForeground(new Color(0x2C7A6B));
+        chip.setBorder(new LineBorder(new Color(0xD3E4DF), 1, true));
+        chip.setFont(new Font("微软雅黑", Font.PLAIN, 12));
+        return chip;
+    }
+
+    private static JComponent wrapScroll(JComponent view) {
+        JScrollPane sp = new JScrollPane(view);
+        sp.setBorder(new LineBorder(new Color(0xDCE7E4), 1));
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        return sp;
+    }
+
+    /** 月历：表头 + 星期行 + 6 行日期格子（和生成的代码画法一致） */
+    public static class CalendarPanel extends JPanel {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth();
+            int h = getHeight();
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, w, h);
+            g2.setColor(new Color(0x22312E));
+            g2.setFont(new Font("微软雅黑", Font.BOLD, 13));
+            g2.drawString("2026 年 1 月", 12, 22);
+            g2.setColor(new Color(0x8A9B97));
+            g2.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+            String[] week = {"日", "一", "二", "三", "四", "五", "六"};
+            for (int i = 0; i < 7; i++) {
+                g2.drawString(week[i], 12 + i * (w - 24) / 7, 44);
+            }
+            g2.setColor(new Color(0xDCE7E4));
+            g2.drawLine(8, 50, w - 8, 50);
+            g2.setColor(new Color(0x3A4A46));
+            g2.setFont(new Font("微软雅黑", Font.PLAIN, 11));
+            int startX = 12;
+            int startY = 72;
+            int cellW = Math.max(12, (w - 24) / 7);
+            int cellH = Math.max(12, (h - 84) / 5);
+            int day = 1;
+            for (int row = 0; row < 5; row++) {
+                for (int col = 0; col < 7; col++) {
+                    if (day > 31) {
+                        break;
+                    }
+                    g2.drawString(String.valueOf(day), startX + col * cellW,
+                            startY + row * cellH);
+                    day++;
+                }
+            }
+            g2.dispose();
+        }
     }
 
     /** 把模型属性写回已有组件 */

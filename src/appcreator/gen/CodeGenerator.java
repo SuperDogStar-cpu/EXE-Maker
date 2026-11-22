@@ -1,6 +1,7 @@
 package appcreator.gen;
 
 import appcreator.model.ComponentFactory;
+import appcreator.io.ComponentData;
 import appcreator.model.Project;
 import appcreator.model.Widget;
 
@@ -96,6 +97,11 @@ public final class CodeGenerator {
     }
 
     private static void appendWidget(StringBuilder sb, Widget w, String var) {
+        ComponentData.Entry extra = ComponentData.get(w.type);
+        if (extra != null) {
+            appendExtra(sb, w, var, extra);
+            return;
+        }
         if ("图片".equals(w.type)) {
             appendImage(sb, w, var);
             return;
@@ -271,6 +277,227 @@ public final class CodeGenerator {
             sb.append("        ").append(var).append(".setOpaque(true);\n");
             sb.append("        ").append(var).append(".setBackground(").append(color(w.bg)).append(");\n");
         }
+        sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
+                .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
+        sb.append("        root.add(").append(var).append(");\n\n");
+    }
+
+    /** 下载数据里的 .NET 工具箱组件：按内部映射生成与设计器一致的 Swing 代码 */
+    private static void appendExtra(StringBuilder sb, Widget w, String var, ComponentData.Entry e) {
+        String k = e.kind;
+        String text = w.text == null ? "" : w.text;
+
+        if ("list".equals(k) || "checkedlist".equals(k)) {
+            String[] items = {"list".equals(k) ? "项目 1" : "选项 1", "项目 2", "项目 3"};
+            if ("checkedlist".equals(k)) {
+                items = new String[]{"选项 1", "选项 2", "选项 3"};
+            }
+            sb.append("        JList<String> ").append(var).append(" = new JList<String>(new String[]{");
+            for (int i = 0; i < items.length; i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(quote(items[i]));
+            }
+            sb.append("});\n");
+            appendScrollWrap(sb, w, var);
+            return;
+        }
+        if ("table".equals(k)) {
+            sb.append("        JTable ").append(var).append(" = new JTable(")
+                    .append("new Object[][]{{\"行 1\", 1}, {\"行 2\", 2}}, ")
+                    .append("new String[]{\"名称\", \"数值\"});\n");
+            sb.append("        ").append(var).append(".setRowHeight(24);\n");
+            appendScrollWrap(sb, w, var);
+            return;
+        }
+        if ("tree".equals(k)) {
+            sb.append("        javax.swing.tree.DefaultMutableTreeNode ").append(var)
+                    .append("Root = new javax.swing.tree.DefaultMutableTreeNode(\"根节点\");\n");
+            sb.append("        ").append(var).append("Root.add(new javax.swing.tree.DefaultMutableTreeNode(\"节点 1\"));\n");
+            sb.append("        ").append(var).append("Root.add(new javax.swing.tree.DefaultMutableTreeNode(\"节点 2\"));\n");
+            sb.append("        JTree ").append(var).append(" = new JTree(").append(var).append("Root);\n");
+            sb.append("        ").append(var).append(".setRowHeight(22);\n");
+            sb.append("        for (int i = 0; i < ").append(var).append(".getRowCount(); i++) {\n");
+            sb.append("            ").append(var).append(".expandRow(i);\n");
+            sb.append("        }\n");
+            appendScrollWrap(sb, w, var);
+            return;
+        }
+        if ("tabs".equals(k)) {
+            sb.append("        JTabbedPane ").append(var).append(" = new JTabbedPane();\n");
+            sb.append("        JPanel ").append(var).append("Tab1 = new JPanel();\n");
+            sb.append("        JPanel ").append(var).append("Tab2 = new JPanel();\n");
+            sb.append("        ").append(var).append(".addTab(\"选项卡 1\", ").append(var).append("Tab1);\n");
+            sb.append("        ").append(var).append(".addTab(\"选项卡 2\", ").append(var).append("Tab2);\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("split".equals(k)) {
+            sb.append("        JPanel ").append(var).append("Left = new JPanel();\n");
+            sb.append("        ").append(var).append("Left.setBackground(new Color(0xF7FBFA));\n");
+            sb.append("        JPanel ").append(var).append("Right = new JPanel();\n");
+            sb.append("        ").append(var).append("Right.setBackground(Color.WHITE);\n");
+            sb.append("        JSplitPane ").append(var).append(" = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, ")
+                    .append(var).append("Left, ").append(var).append("Right);\n");
+            sb.append("        ").append(var).append(".setDividerLocation(0.45);\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("panel".equals(k)) {
+            sb.append("        JPanel ").append(var).append(" = new JPanel();\n");
+            sb.append("        ").append(var).append(".setBackground(new Color(0xF4FAF8));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1));\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("group".equals(k)) {
+            sb.append("        JPanel ").append(var).append(" = new JPanel();\n");
+            sb.append("        ").append(var).append(".setBackground(Color.WHITE);\n");
+            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createTitledBorder(")
+                    .append("new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1), ")
+                    .append(quote(text.isEmpty() ? "分组框" : text)).append("));\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("toolbar".equals(k)) {
+            sb.append("        JToolBar ").append(var).append(" = new JToolBar();\n");
+            sb.append("        ").append(var).append(".setFloatable(false);\n");
+            sb.append("        ").append(var).append(".add(new JButton(\"新建\"));\n");
+            sb.append("        ").append(var).append(".add(new JButton(\"保存\"));\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("statusbar".equals(k) || "menubar".equals(k)) {
+            String t = text.isEmpty() ? ("statusbar".equals(k) ? "就绪" : "文件  编辑  视图") : text;
+            sb.append("        JLabel ").append(var).append(" = new JLabel(").append(quote(t)).append(");\n");
+            sb.append("        ").append(var).append(".setOpaque(true);\n");
+            sb.append("        ").append(var).append(".setBackground(new Color(0xF0F4F3));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.EmptyBorder(0, ")
+                    .append("statusbar".equals(k) ? 8 : 10).append(", 0, 0));\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+        if ("calendar".equals(k)) {
+            int tw = Math.max(1, w.w);
+            int th = Math.max(1, w.h);
+            sb.append("        JPanel ").append(var).append(" = new JPanel() {\n");
+            sb.append("            protected void paintComponent(Graphics g) {\n");
+            sb.append("                super.paintComponent(g);\n");
+            sb.append("                Graphics2D g2 = (Graphics2D) g.create();\n");
+            sb.append("                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);\n");
+            sb.append("                int w = getWidth();\n");
+            sb.append("                int h = getHeight();\n");
+            sb.append("                g2.setColor(Color.WHITE);\n");
+            sb.append("                g2.fillRect(0, 0, w, h);\n");
+            sb.append("                g2.setColor(new Color(0x22312E));\n");
+            sb.append("                g2.setFont(new Font(\"微软雅黑\", Font.BOLD, 13));\n");
+            sb.append("                g2.drawString(\"2026 年 1 月\", 12, 22);\n");
+            sb.append("                g2.setColor(new Color(0x8A9B97));\n");
+            sb.append("                g2.setFont(new Font(\"微软雅黑\", Font.PLAIN, 11));\n");
+            sb.append("                String[] week = {\"日\", \"一\", \"二\", \"三\", \"四\", \"五\", \"六\"};\n");
+            sb.append("                for (int i = 0; i < 7; i++) {\n");
+            sb.append("                    g2.drawString(week[i], 12 + i * (w - 24) / 7, 44);\n");
+            sb.append("                }\n");
+            sb.append("                g2.setColor(new Color(0xDCE7E4));\n");
+            sb.append("                g2.drawLine(8, 50, w - 8, 50);\n");
+            sb.append("                g2.setColor(new Color(0x3A4A46));\n");
+            sb.append("                g2.setFont(new Font(\"微软雅黑\", Font.PLAIN, 11));\n");
+            sb.append("                int startX = 12;\n");
+            sb.append("                int startY = 72;\n");
+            sb.append("                int cellW = Math.max(12, (w - 24) / 7);\n");
+            sb.append("                int cellH = Math.max(12, (h - 84) / 5);\n");
+            sb.append("                int day = 1;\n");
+            sb.append("                for (int row = 0; row < 5; row++) {\n");
+            sb.append("                    for (int col = 0; col < 7; col++) {\n");
+            sb.append("                        if (day > 31) {\n");
+            sb.append("                            break;\n");
+            sb.append("                        }\n");
+            sb.append("                        g2.drawString(String.valueOf(day), startX + col * cellW, startY + row * cellH);\n");
+            sb.append("                        day++;\n");
+            sb.append("                    }\n");
+            sb.append("                }\n");
+            sb.append("                g2.dispose();\n");
+            sb.append("            }\n");
+            sb.append("        };\n");
+            sb.append("        ").append(var).append(".setBackground(Color.WHITE);\n");
+            appendBounds(sb, w, var);
+            return;
+        }
+
+        // 其余：单行文字类 / 按钮类 / 输入类 / 数值类
+        String cls = ComponentFactory.extraClass(k);
+        String generic = "JComboBox".equals(cls) ? "<String>" : "";
+        if ("JSpinner".equals(cls)) {
+            sb.append("        JSpinner ").append(var).append(" = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));\n");
+        } else if ("JProgressBar".equals(cls)) {
+            sb.append("        JProgressBar ").append(var).append(" = new JProgressBar(0, 100);\n");
+            sb.append("        ").append(var).append(".setValue(60);\n");
+        } else if ("JSlider".equals(cls)) {
+            sb.append("        JSlider ").append(var).append(" = new JSlider(0, 100, 50);\n");
+        } else if ("JScrollBar".equals(cls)) {
+            sb.append("        JScrollBar ").append(var).append(" = new JScrollBar(Adjustable.")
+                    .append("scrollbar-h".equals(k) ? "HORIZONTAL" : "VERTICAL").append(");\n");
+        } else {
+            sb.append("        ").append(cls).append(generic).append(" ").append(var)
+                    .append(" = new ").append(cls).append(generic).append("();\n");
+        }
+
+        if ("JLabel".equals(cls) || "JButton".equals(cls)
+                || "JCheckBox".equals(cls) || "JRadioButton".equals(cls)) {
+            String label = text;
+            if ("linklabel".equals(k)) {
+                label = "<html><u>" + ComponentFactory.escapeHtml(text) + "</u></html>";
+            }
+            sb.append("        ").append(var).append(".setText(").append(quote(label)).append(");\n");
+        } else if ("JTextField".equals(cls)) {
+            sb.append("        ").append(var).append(".setText(").append(quote(text)).append(");\n");
+            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
+                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
+                    .append("new javax.swing.border.EmptyBorder(4, 8, 4, 8)));\n");
+        } else if ("JTextArea".equals(cls)) {
+            sb.append("        ").append(var).append(".setText(").append(quote(text)).append(");\n");
+            sb.append("        ").append(var).append(".setLineWrap(true);\n");
+            sb.append("        ").append(var).append(".setWrapStyleWord(true);\n");
+            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
+                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
+                    .append("new javax.swing.border.EmptyBorder(6, 9, 6, 9)));\n");
+        } else if ("JComboBox".equals(cls)) {
+            String[] items = ComponentFactory.splitItems(w.items);
+            for (String item : items) {
+                sb.append("        ").append(var).append(".addItem(").append(quote(item)).append(");\n");
+            }
+        }
+
+        sb.append("        ").append(var).append(".setFont(new Font(\"微软雅黑\", ")
+                .append(w.bold ? "Font.BOLD" : "Font.PLAIN").append(", ").append(w.fontSize).append("));\n");
+        if ("JButton".equals(cls) || "JCheckBox".equals(cls) || "JRadioButton".equals(cls)) {
+            sb.append("        ").append(var).append(".setFocusPainted(false);\n");
+        }
+        if (!"JProgressBar".equals(cls) && !"JSlider".equals(cls)) {
+            sb.append("        ").append(var).append(".setForeground(").append(color(w.fg)).append(");\n");
+        }
+        if ("linklabel".equals(k)) {
+            sb.append("        ").append(var).append(".setForeground(new Color(0x1A73E8));\n");
+            sb.append("        ").append(var).append(".setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));\n");
+        }
+        if (w.bg != null) {
+            sb.append("        ").append(var).append(".setOpaque(true);\n");
+            sb.append("        ").append(var).append(".setBackground(").append(color(w.bg)).append(");\n");
+        }
+        appendBounds(sb, w, var);
+    }
+
+    private static void appendScrollWrap(StringBuilder sb, Widget w, String var) {
+        sb.append("        JScrollPane ").append(var).append("Scroll = new JScrollPane(").append(var).append(");\n");
+        sb.append("        ").append(var).append("Scroll.setBorder(new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1));\n");
+        sb.append("        ").append(var).append("Scroll.getVerticalScrollBar().setUnitIncrement(16);\n");
+        sb.append("        ").append(var).append("Scroll.setBounds(").append(w.x).append(", ")
+                .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
+        sb.append("        root.add(").append(var).append("Scroll);\n\n");
+    }
+
+    private static void appendBounds(StringBuilder sb, Widget w, String var) {
         sb.append("        ").append(var).append(".setBounds(").append(w.x).append(", ")
                 .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");
         sb.append("        root.add(").append(var).append(");\n\n");

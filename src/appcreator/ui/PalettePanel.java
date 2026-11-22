@@ -1,5 +1,6 @@
 package appcreator.ui;
 
+import appcreator.io.ComponentData;
 import appcreator.io.Lang;
 import appcreator.model.ComponentFactory;
 
@@ -35,6 +36,19 @@ public class PalettePanel extends JPanel {
                 Item item = new Item(type, ComponentFactory.GLYPHS[idx],
                         TINTS[idx % TINTS.length], onAddCenter);
                 add(item);
+                add(Box.createVerticalStrut(5));
+            }
+            add(Box.createVerticalStrut(4));
+        }
+        // 启动时自动下载的 .NET 工具箱组件（容器 / 菜单 / 数据 / 输入 / 对话框 / 组件）
+        if (ComponentData.count() == 0) {
+            ComponentData.load();
+        }
+        for (String category : ComponentData.categories()) {
+            add(sectionHead(category));
+            for (ComponentData.Entry e : ComponentData.byCategory(category)) {
+                int tint = Math.abs((category + e.name).hashCode()) % TINTS.length;
+                add(new Item(e.name, e.glyph, TINTS[tint], onAddCenter));
                 add(Box.createVerticalStrut(5));
             }
             add(Box.createVerticalStrut(4));
