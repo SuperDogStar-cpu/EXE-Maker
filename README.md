@@ -14,7 +14,7 @@
 
 | 区域      | 能做什么                                                               |
 | ------- | ------------------------------------------------------------------ |
-| 左侧「组件库」 | 12 类组件，分三组：**基础**（标签、按钮、文本框、文本域、复选框、单选框、下拉框、进度条、滑块）、**图文**（图片、视频）、**链接**（超链接）。**拖到画布放置**，或双击直接添加到画布中央 |
+| 左侧「组件库」 | 12 类组件，分三组：**基础**（标签、按钮、文本框、文本域、复选框、单选框、下拉框、进度条、滑块）、**图文**（图片、视频）、**链接**（超链接）；启动时还会自动下载 Visual Studio .NET（WinForms）工具箱清单，追加**容器 / 菜单 / 数据 / 输入 / 对话框 / 组件** 6 组共 44 个组件（Panel、GroupBox、选项卡、表格 DataGrid、树形 TreeView、菜单栏、状态栏、月历、计时器等）。**拖到画布放置**，或双击直接添加到画布中央 |
 | 中间画布    | 点击选中、拖动移动、8 个手柄拖拽缩放（最小 100×100，最大不超过窗口尺寸）；顶部显示组件变量名；Delete 删除；虚线网格 + 白纸页效果               |
 | 右侧「属性」  | 窗口标题 / 尺寸 / 背景色 / **窗口图标**；组件变量名、文本、位置、尺寸、字号、加粗、前景色、背景色、下拉项；图片 / 视频的**文件路径**、超链接的**网址**，全部实时生效 |
 | 右侧「代码」  | 点一下即弹出**独立的深色代码编辑器**，写 Java 代码可引用画布里的组件变量名（如 `button1`），也能直接改整套生成源码 |
@@ -65,7 +65,8 @@
 - **自动识别**：启动时会扫描本机的 Java —— 当前运行环境、`JAVA_HOME`、`PATH`，以及 `Program Files` / Eclipse Adoptium / AdoptOpenJDK / Zulu / Microsoft / BellSoft / Corretto / Semeru / ojdkbuild、`%LOCALAPPDATA%\Programs`、`%LOCALAPPDATA%\Java`、`~/tools`、`~/.jdks`、`~/scoop/apps`（Linux / macOS 还有 `/usr/lib/jvm`、`/opt` 等）。每个候选都会**真的跑一次 `java -version`** 验证，跑不通的不进列表。
 - **下拉框**：默认「自动（跟随当前运行环境）」；其它项显示成 `Java 21.0.12（JDK · 当前运行）` 这种「版本（JDK / JRE · 是否当前运行）」，鼠标悬停能看到完整安装路径。点「重新检测」会重新扫描（检测在后台线程跑，界面不卡）。
 - **影响范围**：「导出 EXE」用的 `jpackage`、「运行预览」的外部编译回退用的 `javac` / `java`，都优先用你选中的那个 JDK；选的是纯 JRE（没有 `javac` / `jpackage`）时会自动退回当前运行的 JDK，缺工具时弹提示引导你去设置里改。
-- **启动顺序**：打开创作器会先出现一个小窗口，依次显示「正在适配本机字体… → 正在下载语言包…（x/6） → 正在检测本机 Java 版本并验证是否可用…」，三步都跑完才进主界面，所以进来之后语言和「设置 → Java」里都是现成的，不用等。
+- **启动顺序**：打开创作器会先出现一个小窗口，依次显示「正在适配本机字体… → 正在下载语言包…（x/6） → 正在下载组件数据… → 正在检测本机 Java 版本并验证是否可用…」，四步都跑完才进主界面，所以进来之后语言、组件库和「设置 → Java」里都是现成的，不用等。
+- **自动下载组件数据**：启动时从 GitHub 仓库的 `Data/components.jcmp` 拉取 Visual Studio .NET（WinForms）工具箱组件清单，存到 `%USERPROFILE%\.appcreator\data\components.jcmp`（macOS / Linux 是 `~/.appcreator/data/`），下载失败或没网就用程序内置那份。清单每行一个组件：`分类 ⇥ 名称 ⇥ 类型 ⇥ 默认宽 ⇥ 默认高 ⇥ 默认文字 ⇥ 图标字`，改完重新上传即可扩充组件库。
 - **自动下载语言包**：启动时会从 GitHub 仓库的 `Language/` 目录把 6 个 `.japa` 拉到用户目录下的 `Language`（Windows `%USERPROFILE%\Language`，macOS / Linux `~/Language`），下次离线也能直接用；网络不通或某个包失败只会跳过，不影响进主界面。
 - 选择记在用户目录的 `应用创作器.java.properties`（键 `home`），下次启动直接复用。
 
@@ -142,6 +143,9 @@ Java应用创作器/
 ├─ preview_settings.png     界面截图（设置 · 语言选择）
 ├─ preview_settings_ui.png  界面截图（English.japa 生效后的主界面）
 ├─ Language/                6 国语言包（English.japa、日本語.japa、한국어.japa …）
+├─ Data/components.jcmp     .NET（WinForms）工具箱组件清单（启动时自动下载最新一份）
+├─ preview_extras_ui.png    界面截图（组件库新增的 6 个分类）
+├─ preview_extras.png       界面截图（表格、树、选项卡、月历等新组件在画布上的样子）
 ├─ preview_logic_dark.png   界面截图（深色代码编辑器，含错误波浪线）
 ├─ preview_complete.png     界面截图（代码补全候选框）
 ├─ preview_splash.png       界面截图（启动时的 Java 检测窗口）

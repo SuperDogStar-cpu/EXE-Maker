@@ -1,48 +1,49 @@
 # Visual Studio .NET（WinForms）工具箱组件数据
 # 每个字段用制表符分隔：分类	名称	类型	默认宽	默认高	默认文字	图标字
 # 分类下的组件会按顺序追加到左侧组件库（基础/图文/链接 三个原分类保持不变）
+# 名称尽量短，组件库一行放得下；括号里保留 .NET 原名方便对照
 
 容器	Panel 面板	panel	240	150		板
 容器	GroupBox 分组框	group	240	150	分组框	组
-容器	TabControl 选项卡	tabs	280	170		项
-容器	SplitContainer 分隔容器	split	280	170		分
-容器	TableLayoutPanel 网格布局	panel	240	150		格
-容器	FlowLayoutPanel 流式布局	panel	240	150		流
-容器	ToolStripContainer 工具容器	panel	240	150		工
-菜单	MenuStrip 菜单栏	menubar	300	28	文件  编辑  视图	菜
-菜单	ContextMenuStrip 右键菜单	nonvisual	46	46	右键菜单	右
-菜单	ToolStrip 工具栏	toolbar	300	34		具
-菜单	StatusStrip 状态栏	statusbar	300	26	就绪	状
-数据	DataGridView 表格	table	320	170		表
-数据	TreeView 树形视图	tree	240	170		树
-数据	ListView 列表视图	list	260	170		列
-数据	ListBox 列表框	list	200	150		框
-数据	CheckedListBox 复选列表	checkedlist	200	160		勾
-数据	BindingSource 数据源	nonvisual	46	46	数据源	源
-数据	BindingNavigator 数据导航	nonvisual	46	46	数据导航	航
-数据	DataSet 数据集	nonvisual	46	46	数据集	集
-输入	NumericUpDown 数字框	spinner	120	32	0	数
-输入	DomainUpDown 选项框	spinner	120	32	选项	选
-输入	DateTimePicker 日期选择	datetime	160	32	2026-01-01	期
-输入	MonthCalendar 月历	calendar	230	190		历
-输入	MaskedTextBox 掩码框	textfield	160	32	00-00-00	掩
-输入	RichTextBox 富文本框	textarea	240	150		富
-输入	LinkLabel 链接标签	linklabel	120	26	链接标签	链
-输入	HScrollBar 水平滚动条	scrollbar-h	200	18		横
-输入	VScrollBar 垂直滚动条	scrollbar-v	20	200		竖
-对话框	OpenFileDialog 打开文件	nonvisual	46	46	打开文件	开
-对话框	SaveFileDialog 保存文件	nonvisual	46	46	保存文件	存
-对话框	FolderBrowserDialog 选择文件夹	folder	46	46	选择文件夹	夹
-对话框	ColorDialog 颜色选择	nonvisual	46	46	颜色选择	色
-对话框	FontDialog 字体选择	nonvisual	46	46	字体选择	字
-对话框	PrintDialog 打印	nonvisual	46	46	打印	印
-对话框	PageSetupDialog 页面设置	nonvisual	46	46	页面设置	页
-组件	Timer 计时器	nonvisual	46	46	计时器	时
-组件	BackgroundWorker 后台任务	nonvisual	46	46	后台任务	后
-组件	ImageList 图像列表	nonvisual	46	46	图像列表	像
-组件	ErrorProvider 错误提示	nonvisual	46	46	错误提示	错
-组件	ToolTip 提示条	nonvisual	46	46	提示条	提
-组件	HelpProvider 帮助	nonvisual	46	46	帮助	帮
-组件	Process 进程	nonvisual	46	46	进程	程
-组件	FileSystemWatcher 文件监视	nonvisual	46	46	文件监视	监
-组件	EventLog 事件日志	nonvisual	46	46	事件日志	志
+容器	选项卡 Tab	tabs	280	170		项
+容器	分隔 Split	split	280	170		分
+容器	网格 Table	panel	240	150		格
+容器	流式 Flow	panel	240	150		流
+容器	容器 Strip	panel	240	150		工
+菜单	菜单栏 Menu	menubar	300	28	文件  编辑  视图	菜
+菜单	右键菜单	nonvisual	46	46	右键菜单	右
+菜单	工具栏 Tool	toolbar	300	34		具
+菜单	状态栏 Status	statusbar	300	26	就绪	状
+数据	表格 DataGrid	table	320	170		表
+数据	树形 TreeView	tree	240	170		树
+数据	列表 ListView	list	260	170		列
+数据	列表框 List	list	200	150		框
+数据	复选列表 Check	checkedlist	200	160		勾
+数据	数据源 Binding	nonvisual	46	46	数据源	源
+数据	数据导航	nonvisual	46	46	数据导航	航
+数据	数据集 DataSet	nonvisual	46	46	数据集	集
+输入	数字框 Numeric	spinner	120	32	0	数
+输入	选项框 Domain	spinner	120	32	选项	选
+输入	日期 Date	datetime	160	32	2026-01-01	期
+输入	月历 Calendar	calendar	230	190		历
+输入	掩码框 Masked	textfield	160	32	00-00-00	掩
+输入	富文本 Rich	textarea	240	150		富
+输入	链接标签 Link	linklabel	120	26	链接标签	链
+输入	滚动条 H	scrollbar-h	200	18		横
+输入	滚动条 V	scrollbar-v	20	200		竖
+对话框	打开文件 Open	nonvisual	46	46	打开文件	开
+对话框	保存文件 Save	nonvisual	46	46	保存文件	存
+对话框	选择文件夹	nonvisual	46	46	选择文件夹	夹
+对话框	颜色选择	nonvisual	46	46	颜色选择	色
+对话框	字体选择	nonvisual	46	46	字体选择	字
+对话框	打印 Print	nonvisual	46	46	打印	印
+对话框	页面设置	nonvisual	46	46	页面设置	页
+组件	计时器 Timer	nonvisual	46	46	计时器	时
+组件	后台任务	nonvisual	46	46	后台任务	后
+组件	图像列表	nonvisual	46	46	图像列表	像
+组件	错误提示	nonvisual	46	46	错误提示	错
+组件	提示条 ToolTip	nonvisual	46	46	提示条	提
+组件	帮助 Help	nonvisual	46	46	帮助	帮
+组件	进程 Process	nonvisual	46	46	进程	程
+组件	文件监视	nonvisual	46	46	文件监视	监
+组件	事件日志 Log	nonvisual	46	46	事件日志	志

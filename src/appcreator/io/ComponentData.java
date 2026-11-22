@@ -53,6 +53,14 @@ public final class ComponentData {
     private static final Map<String, Entry> BY_NAME = new HashMap<String, Entry>();
     private static final List<String> CATEGORIES = new ArrayList<String>();
 
+    static {
+        // Windows 上用系统证书库：JDK 自带 cacerts 遇到企业代理的证书会握手失败
+        if (System.getProperty("javax.net.ssl.trustStoreType") == null
+                && System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            System.setProperty("javax.net.ssl.trustStoreType", "Windows-ROOT");
+        }
+    }
+
     private static String loadedFrom = "内置";
 
     private ComponentData() {

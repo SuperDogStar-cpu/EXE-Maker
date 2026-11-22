@@ -99,7 +99,7 @@ public class PalettePanel extends JPanel {
             setMinimumSize(new Dimension(120, 36));
             setAlignmentX(Component.LEFT_ALIGNMENT);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setToolTipText("拖到画布中放置，或双击直接添加");
+            setToolTipText(Lang.t(type) + " · 拖到画布中放置，或双击直接添加");
 
             setTransferHandler(new TransferHandler() {
                 @Override
@@ -186,7 +186,16 @@ public class PalettePanel extends JPanel {
             g2.setFont(new Font(Fonts.familyForText(label), Font.PLAIN, 13));
             FontMetrics tm = g2.getFontMetrics();
             g2.setColor(Theme.TEXT);
-            Fonts.draw(g2, label, ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent(), Font.PLAIN, 13);
+            int maxW = Math.max(10, w - (ix + s + 10) - 8);
+            String drawn = label;
+            if (Fonts.width(g2, drawn) > maxW) {
+                // 名称太长就截断加省略号，完整名称在鼠标悬停提示里看
+                while (drawn.length() > 1 && Fonts.width(g2, drawn + "…") > maxW) {
+                    drawn = drawn.substring(0, drawn.length() - 1);
+                }
+                drawn = drawn + "…";
+            }
+            Fonts.draw(g2, drawn, ix + s + 10, (h - tm.getHeight()) / 2 + tm.getAscent(), Font.PLAIN, 13);
             g2.dispose();
         }
     }
