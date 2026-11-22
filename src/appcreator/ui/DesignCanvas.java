@@ -268,9 +268,63 @@ public class DesignCanvas extends JLayeredPane {
         return null;
     }
 
-    /** 缩放限制：最小 100×100，最大不超过窗口（项目窗口）尺寸 */
-    static final int MIN_SIZE = 100;
+    /** 缩放上限：不超过窗口（项目窗口）尺寸；最小尺寸不再限制 */
+    private void resizeSelected(Point p) {
+        int maxW = Math.max(1, project.width);
+        int maxH = Math.max(1, project.height);
 
+        int x1 = startRect.x;
+        int y1 = startRect.y;
+        int x2 = startRect.x + startRect.width;
+        int y2 = startRect.y + startRect.height;
+
+        // 拖动点先夹在窗口范围内，组件就不会被拖出窗口
+        int px = Math.max(0, Math.min(p.x, maxW));
+        int py = Math.max(0, Math.min(p.y, maxH));
+
+        if (handle == 0 || handle == 1 || handle == 2) {
+            y1 = py;
+        }
+        if (handle == 4 || handle == 5 || handle == 6) {
+            y2 = py;
+        }
+        if (handle == 0 || handle == 6 || handle == 7) {
+            x1 = px;
+        }
+        if (handle == 2 || handle == 3 || handle == 4) {
+            x2 = px;
+        }
+
+        // 只保证宽高不小于 1 像素，不再设下限
+        if (x2 - x1 < 1) {
+            if (handle == 0 || handle == 6 || handle == 7) {
+                x1 = x2 - 1;
+            } else {
+                x2 = x1 + 1;
+            }
+        }
+        if (y2 - y1 < 1) {
+            if (handle == 0 || handle == 1 || handle == 2) {
+                y1 = y2 - 1;
+            } else {
+                y2 = y1 + 1;
+            }
+        }
+
+        // 上限：整块不能超出窗口
+        x1 = Math.max(0, Math.min(x1, maxW - 1));
+        x2 = Math.min(maxW, Math.max(x2, x1 + 1));
+        y1 = Math.max(0, Math.min(y1, maxH - 1));
+        y2 = Math.min(maxH, Math.max(y2, y1 + 1));
+
+        selected.x = x1;
+        selected.y = y1;
+        selected.w = Math.max(1, Math.min(maxW - x1, x2 - x1));
+        selected.h = Math.max(1, Math.min(maxH - y1, y2 - y1));
+        applyBounds(selected);
+    }
+
+    /** 位置和尺寸夹在窗口范围内（不再限制最小尺寸） */
     private void applyBounds(Widget w) {
         // 上限：组件不能超出窗口范围，超出就把它挤回窗口里
         int maxW = Math.max(1, project.width);
@@ -298,63 +352,6 @@ public class DesignCanvas extends JLayeredPane {
             }
         }
         base.repaint();
-    }
-
-    private void resizeSelected(Point p) {
-        int maxW = Math.max(1, project.width);
-        int maxH = Math.max(1, project.height);
-        int minW = Math.min(MIN_SIZE, maxW);
-        int minH = Math.min(MIN_SIZE, maxH);
-
-        int x1 = startRect.x;
-        int y1 = startRect.y;
-        int x2 = startRect.x + startRect.width;
-        int y2 = startRect.y + startRect.height;
-
-        // 拖动点先夹在窗口范围内，组件就不会被拖出窗口
-        int px = Math.max(0, Math.min(p.x, maxW));
-        int py = Math.max(0, Math.min(p.y, maxH));
-
-        if (handle == 0 || handle == 1 || handle == 2) {
-            y1 = py;
-        }
-        if (handle == 4 || handle == 5 || handle == 6) {
-            y2 = py;
-        }
-        if (handle == 0 || handle == 6 || handle == 7) {
-            x1 = px;
-        }
-        if (handle == 2 || handle == 3 || handle == 4) {
-            x2 = px;
-        }
-
-        // 最小 100×100：往里拖过头就把被拖的那条边顶回去
-        if (x2 - x1 < minW) {
-            if (handle == 0 || handle == 6 || handle == 7) {
-                x1 = x2 - minW;
-            } else {
-                x2 = x1 + minW;
-            }
-        }
-        if (y2 - y1 < minH) {
-            if (handle == 0 || handle == 1 || handle == 2) {
-                y1 = y2 - minH;
-            } else {
-                y2 = y1 + minH;
-            }
-        }
-
-        // 上限：整块不能超出窗口
-        x1 = Math.max(0, Math.min(x1, maxW - minW));
-        x2 = Math.min(maxW, Math.max(x2, x1 + minW));
-        y1 = Math.max(0, Math.min(y1, maxH - minH));
-        y2 = Math.min(maxH, Math.max(y2, y1 + minH));
-
-        selected.x = x1;
-        selected.y = y1;
-        selected.w = Math.min(maxW - x1, Math.max(minW, x2 - x1));
-        selected.h = Math.min(maxH - y1, Math.max(minH, y2 - y1));
-        applyBounds(selected);
     }
 
     private final MouseAdapter glassMouse = new MouseAdapter() {

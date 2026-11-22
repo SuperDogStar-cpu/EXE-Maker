@@ -23,37 +23,48 @@ public class PalettePanel extends JPanel {
             new Color(0x63C7C2), new Color(0xB39DEE), new Color(0xEFC25A)
     };
 
+    /** 折叠起来的分类（点分类标题展开 / 收起，同一次运行里记住状态） */
+    private static final java.util.Set<String> COLLAPSED = new java.util.HashSet<String>();
+
     public PalettePanel(Consumer<String> onAddCenter) {
         setOpaque(false);
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(new EmptyBorder(2, 0, 2, 0));
 
         for (String[] group : ComponentFactory.GROUPS) {
-            add(sectionHead(group[0]));
+            java.util.List<Component> items = new java.util.ArrayList<Component>();
             for (int i = 1; i < group.length; i++) {
                 String type = group[i];
                 int idx = typeIndex(type);
-                Item item = new Item(type, ComponentFactory.GLYPHS[idx],
-                        TINTS[idx % TINTS.length], onAddCenter);
-                add(item);
-                add(Box.createVerticalStrut(5));
+                items.add(new Item(type, ComponentFactory.GLYPHS[idx],
+                        TINTS[idx % TINTS.length], onAddCenter));
+                items.add(Box.createVerticalStrut(5));
             }
-            add(Box.createVerticalStrut(4));
+            addSection(group[0], items);
         }
         // 启动时自动下载的 .NET 工具箱组件（容器 / 菜单 / 数据 / 输入 / 对话框 / 组件）
         if (ComponentData.count() == 0) {
             ComponentData.load();
         }
         for (String category : ComponentData.categories()) {
-            add(sectionHead(category));
+            java.util.List<Component> items = new java.util.ArrayList<Component>();
             for (ComponentData.Entry e : ComponentData.byCategory(category)) {
                 int tint = Math.abs((category + e.name).hashCode()) % TINTS.length;
-                add(new Item(e.name, e.glyph, TINTS[tint], onAddCenter));
-                add(Box.createVerticalStrut(5));
+                items.add(new Item(e.name, e.glyph, TINTS[tint], onAddCenter));
+                items.add(Box.createVerticalStrut(5));
             }
-            add(Box.createVerticalStrut(4));
+            addSection(category, items);
         }
         add(Box.createVerticalGlue());
+    }
+
+    private void addSection(String title, java.util.List<Component> items) {
+        add(sectionHead(title, items));
+        for (Component c : items) {
+            c.setVisible(!COLLAPSED.contains(title));
+            add(c);
+        }
+        add(Box.createVerticalStrut(4));
     }
 
     private static int typeIndex(String type) {
@@ -65,19 +76,70 @@ public class PalettePanel extends JPanel {
         return 0;
     }
 
-    /** 分类标题：左侧竖条 + 分类名 */
-    private JComponent sectionHead(String name) {
-        JPanel head = new JPanel(new BorderLayout(6, 0));
-        head.setOpaque(false);
-        head.setAlignmentX(Component.LEFT_ALIGNMENT);
-        head.setBorder(new EmptyBorder(2, 4, 4, 4));
-        head.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-        head.setPreferredSize(new Dimension(170, 24));
-
-        JLabel text = Theme.label(Lang.t(name), 11, Theme.MUTED);
-        text.setFont(new Font(Fonts.familyForText(Lang.t(name)), Font.BOLD, 11));
-        head.add(text, BorderLayout.WEST);
+    /** 分类标题：三角箭头 + 分类名，点一下收起 / 展开该分类 */
+    private JComponent sectionHead(final String name, final java.util.List<Component> items) {
+        final Head head = new Head(name);
+        head.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                boolean collapsed = !COLLAPSED.contains(name);
+                if (collapsed) {
+                    COLLAPSED.add(name);
+                } else {
+                    COLLAPSED.remove(name);
+                }
+                head.collapsed = collapsed;
+                head.setToolTipText(collapsed ? "点一下展开该分类" : "点一下收起该分类");
+                for (Component c : items) {
+                    c.setVisible(!collapsed);
+                }
+                revalidate();
+                repaint();
+            }
+        });
         return head;
+    }
+
+    private static class Head extends JComponent {
+
+        private final String name;
+        private boolean collapsed;
+
+        Head(String name) {
+            this.name = name;
+            this.collapsed = COLLAPSED.contains(name);
+            setOpaque(false);
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+            setPreferredSize(new Dimension(170, 24));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+            setMinimumSize(new Dimension(100, 24));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setToolTipText(collapsed ? "点一下展开该分类" : "点一下收起该分类");
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // 左侧小三角：收起时朝右，展开时朝下
+            g2.setColor(Theme.MUTED);
+            int cx = 7;
+            int cy = getHeight() / 2 + 1;
+            int s = 4;
+            if (collapsed) {
+                g2.fillPolygon(new int[]{cx, cx, cx + 2 * s}, new int[]{cy - s, cy + s, cy}, 3);
+            } else {
+                g2.fillPolygon(new int[]{cx, cx + 2 * s, cx + s}, new int[]{cy - s, cy - s, cy + s}, 3);
+            }
+
+            String label = Lang.t(name);
+            g2.setFont(new Font(Fonts.familyForText(label), Font.BOLD, 11));
+            FontMetrics fm = g2.getFontMetrics();
+            g2.setColor(Theme.MUTED);
+            Fonts.draw(g2, label, 16, (getHeight() - fm.getHeight()) / 2 + fm.getAscent(), Font.BOLD, 11);
+            g2.dispose();
+        }
     }
 
     private static class Item extends JComponent {

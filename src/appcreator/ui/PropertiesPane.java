@@ -442,11 +442,11 @@ public class PropertiesPane extends JPanel {
         current.text = fText.getText();
         current.x = Math.max(0, num(fX.getText(), current.x));
         current.y = Math.max(0, num(fY.getText(), current.y));
-        // 缩放限制：最小 100×100，最大不超过窗口尺寸
+        // 只有上限（不超过窗口尺寸），最小尺寸不限制
         int maxW = project == null ? 900 : Math.max(1, project.width);
         int maxH = project == null ? 620 : Math.max(1, project.height);
-        current.w = Math.min(maxW, Math.max(Math.min(100, maxW), num(fW.getText(), current.w)));
-        current.h = Math.min(maxH, Math.max(Math.min(100, maxH), num(fH.getText(), current.h)));
+        current.w = Math.min(maxW, Math.max(1, num(fW.getText(), current.w)));
+        current.h = Math.min(maxH, Math.max(1, num(fH.getText(), current.h)));
         if (current.x + current.w > maxW) {
             current.x = Math.max(0, maxW - current.w);
         }
