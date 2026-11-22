@@ -36,6 +36,7 @@ public final class TutorialDialog extends JDialog {
     private static final String[][] DOCS = {
             {"快速上手", "快速上手.md"},
             {"逻辑代码", "控件逻辑代码.md"},
+            {"对话框", "对话框使用.md"},
             {"Java 基础", "Java基础语法.md"},
             {"延迟与内置库", "Java延迟与内置库.md"}
     };

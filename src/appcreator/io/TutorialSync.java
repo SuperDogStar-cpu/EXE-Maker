@@ -30,7 +30,7 @@ public final class TutorialSync {
 
     /** 教程文件名（和仓库根目录、jar 里的资源同名） */
     public static final String[] FILES = {
-            "快速上手.md", "控件逻辑代码.md", "Java基础语法.md", "Java延迟与内置库.md"
+            "快速上手.md", "控件逻辑代码.md", "对话框使用.md", "Java基础语法.md", "Java延迟与内置库.md"
     };
 
     private static final long TOTAL_BUDGET_MS = 12000;

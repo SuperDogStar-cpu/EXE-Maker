@@ -183,8 +183,37 @@ public final class Markdown {
                     .append("pt;color:#7C9A93;margin-bottom:2;\">").append(escape(lang)).append("</div>");
         }
         sb.append("<pre style=\"font-family:Consolas;font-size:").append(mono)
-                .append("pt;color:#1F3D3A;margin:0;\">").append(escape(code)).append("</pre>");
+                .append("pt;color:#1F3D3A;margin:0;\">").append(escape(wrapCode(code))).append("</pre>");
         sb.append("</td></tr></table></td></tr></table>");
+        return sb.toString();
+    }
+
+    /** 代码块长行软换行：Swing 的 pre 不折行，太长会出现横向滚动条，这里按 96 字符断开 */
+    private static String wrapCode(String code) {
+        StringBuilder sb = new StringBuilder(code.length() + 64);
+        for (String line : code.split("\n", -1)) {
+            String rest = line;
+            String indent = "    ";
+            while (rest.length() > 96) {
+                int cut = -1;
+                for (int i = Math.min(95, rest.length() - 1); i >= 48; i--) {
+                    char c = rest.charAt(i);
+                    if (c == ' ' || c == ',' || c == ';' || c == '+' || c == '&') {
+                        cut = i + 1;
+                        break;
+                    }
+                }
+                if (cut <= 0) {
+                    cut = 96;
+                }
+                sb.append(rest, 0, cut).append('\n').append(indent);
+                rest = rest.substring(cut);
+            }
+            sb.append(rest).append('\n');
+        }
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\n') {
+            sb.setLength(sb.length() - 1);
+        }
         return sb.toString();
     }
 
