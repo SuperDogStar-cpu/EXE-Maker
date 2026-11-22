@@ -155,21 +155,12 @@ Java应用创作器/
 │  │                        RoundButton / RoundPanel / RoundBorder / SettingsDialog /
 │  │                        CodeEditor（深色编辑器）/ CodeWindow（独立窗口，两个标签页）
 │  ├─ gen/                  代码生成 CodeGenerator、即时编译运行 Runner、导出 EXE 的 Exporter、图标 IconUtil
-│  └─ io/                   项目文件读写 ProjectIO、界面语言 Lang（.japa 语言包）
-├─ preview_ui.png           界面截图（编辑画布）
-├─ preview_mock.png         界面截图（模拟窗口）
-├─ preview_v12.png          界面截图（组件库三组分类 + 超链接属性）
-├─ preview_code.png         界面截图（代码编辑器「完整源码（可改）」页）
-├─ preview_settings.png     界面截图（设置 · 语言选择）
-├─ preview_settings_ui.png  界面截图（English.japa 生效后的主界面）
+│  └─ io/                   项目文件读写 ProjectIO、界面语言 Lang（.japa 语言包）、
+│                           LanguageSync / TutorialSync / ComponentData（启动时下载语言包、教程、组件清单）
 ├─ Language/                6 国语言包（English.japa、日本語.japa、한국어.japa …）
 ├─ Data/components.jcmp     .NET（WinForms）工具箱组件清单（启动时自动下载最新一份）
-├─ preview_extras_ui.png    界面截图（组件库新增的 6 个分类）
-├─ preview_extras.png       界面截图（表格、树、选项卡、月历等新组件在画布上的样子）
-├─ preview_logic_dark.png   界面截图（深色代码编辑器，含错误波浪线）
-├─ preview_complete.png     界面截图（代码补全候选框）
-├─ preview_splash.png       界面截图（启动时的 Java 检测窗口）
-├─ preview_splash_sync.png 界面截图（启动时自动下载语言包）
+├─ 快速上手.md / 控件逻辑代码.md / Java基础语法.md / Java延迟与内置库.md　教程源文件（也内置进 jar）
+└─ out/                     编译产物（jar 的打包来源，里面带 appcreator/tutorial/*.md）
 ```
 
 ## 生成的代码长什么样
