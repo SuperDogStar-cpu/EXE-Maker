@@ -132,16 +132,12 @@ public final class CodeGenerator {
             sb.append("        ").append(var).append(".setText(").append(quote(w.text)).append(");\n");
         } else if ("JTextField".equals(cls)) {
             sb.append("        ").append(var).append(".setText(").append(quote(w.text)).append(");\n");
-            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
-                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
-                    .append("new javax.swing.border.EmptyBorder(4, 8, 4, 8)));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.EmptyBorder(4, 8, 4, 8));\n");
         } else if ("JTextArea".equals(cls)) {
             sb.append("        ").append(var).append(".setText(").append(quote(w.text)).append(");\n");
             sb.append("        ").append(var).append(".setLineWrap(true);\n");
             sb.append("        ").append(var).append(".setWrapStyleWord(true);\n");
-            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
-                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
-                    .append("new javax.swing.border.EmptyBorder(6, 9, 6, 9)));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.EmptyBorder(6, 9, 6, 9));\n");
         } else if ("JComboBox".equals(cls)) {
             for (String item : ComponentFactory.splitItems(w.items)) {
                 sb.append("        ").append(var).append(".addItem(").append(quote(item)).append(");\n");
@@ -347,7 +343,7 @@ public final class CodeGenerator {
         if ("panel".equals(k)) {
             sb.append("        JPanel ").append(var).append(" = new JPanel();\n");
             sb.append("        ").append(var).append(".setBackground(new Color(0xF4FAF8));\n");
-            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1));\n");
+            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createEmptyBorder());\n");
             appendBounds(sb, w, var);
             return;
         }
@@ -355,7 +351,7 @@ public final class CodeGenerator {
             sb.append("        JPanel ").append(var).append(" = new JPanel();\n");
             sb.append("        ").append(var).append(".setBackground(Color.WHITE);\n");
             sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createTitledBorder(")
-                    .append("new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1), ")
+                    .append("new javax.swing.border.EmptyBorder(0, 0, 0, 0), ")
                     .append(quote(text.isEmpty() ? "分组框" : text)).append("));\n");
             appendBounds(sb, w, var);
             return;
@@ -452,16 +448,12 @@ public final class CodeGenerator {
             sb.append("        ").append(var).append(".setText(").append(quote(label)).append(");\n");
         } else if ("JTextField".equals(cls)) {
             sb.append("        ").append(var).append(".setText(").append(quote(text)).append(");\n");
-            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
-                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
-                    .append("new javax.swing.border.EmptyBorder(4, 8, 4, 8)));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.EmptyBorder(4, 8, 4, 8));\n");
         } else if ("JTextArea".equals(cls)) {
             sb.append("        ").append(var).append(".setText(").append(quote(text)).append(");\n");
             sb.append("        ").append(var).append(".setLineWrap(true);\n");
             sb.append("        ").append(var).append(".setWrapStyleWord(true);\n");
-            sb.append("        ").append(var).append(".setBorder(javax.swing.BorderFactory.createCompoundBorder(")
-                    .append("new javax.swing.border.LineBorder(new Color(0xE3EBE8), 1, true), ")
-                    .append("new javax.swing.border.EmptyBorder(6, 9, 6, 9)));\n");
+            sb.append("        ").append(var).append(".setBorder(new javax.swing.border.EmptyBorder(6, 9, 6, 9));\n");
         } else if ("JComboBox".equals(cls)) {
             String[] items = ComponentFactory.splitItems(w.items);
             for (String item : items) {
@@ -490,7 +482,7 @@ public final class CodeGenerator {
 
     private static void appendScrollWrap(StringBuilder sb, Widget w, String var) {
         sb.append("        JScrollPane ").append(var).append("Scroll = new JScrollPane(").append(var).append(");\n");
-        sb.append("        ").append(var).append("Scroll.setBorder(new javax.swing.border.LineBorder(new Color(0xDCE7E4), 1));\n");
+        sb.append("        ").append(var).append("Scroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());\n");
         sb.append("        ").append(var).append("Scroll.getVerticalScrollBar().setUnitIncrement(16);\n");
         sb.append("        ").append(var).append("Scroll.setBounds(").append(w.x).append(", ")
                 .append(w.y).append(", ").append(w.w).append(", ").append(w.h).append(");\n");

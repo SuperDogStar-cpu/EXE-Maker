@@ -358,11 +358,9 @@ public final class ComponentFactory {
         return c;
     }
 
-    /** 输入框的浅色圆角边框，和生成的代码保持一致 */
+    /** 输入框：不要边框，只用内边距保证文字不贴边（和生成的代码保持一致） */
     public static javax.swing.border.Border inputBorder(int topBottom, int leftRight) {
-        return BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(0xE3EBE8), 1, true),
-                new EmptyBorder(topBottom, leftRight, topBottom, leftRight));
+        return new EmptyBorder(topBottom, leftRight, topBottom, leftRight);
     }
 
     // ------------------------------------------------------------------
@@ -462,14 +460,15 @@ public final class ComponentFactory {
         if ("panel".equals(k)) {
             JPanel p = new JPanel();
             p.setBackground(new Color(0xF4FAF8));
-            p.setBorder(new LineBorder(new Color(0xDCE7E4), 1));
+            p.setBorder(BorderFactory.createEmptyBorder());
             return p;
         }
         if ("group".equals(k)) {
             JPanel p = new JPanel();
             p.setBackground(Color.WHITE);
-            p.setBorder(BorderFactory.createTitledBorder(
-                    new LineBorder(new Color(0xDCE7E4), 1), text.isEmpty() ? "分组框" : text));
+            // 只要标题，不画外框（TitledBorder 传 null 会退回默认线框，所以给个空边框）
+            p.setBorder(BorderFactory.createTitledBorder(new EmptyBorder(0, 0, 0, 0),
+                    text.isEmpty() ? "分组框" : text));
             return p;
         }
         if ("toolbar".equals(k)) {
@@ -501,14 +500,14 @@ public final class ComponentFactory {
         chip.setOpaque(true);
         chip.setBackground(new Color(0xEEF4F2));
         chip.setForeground(new Color(0x2C7A6B));
-        chip.setBorder(new LineBorder(new Color(0xD3E4DF), 1, true));
+        chip.setBorder(new EmptyBorder(3, 9, 3, 9));
         chip.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         return chip;
     }
 
     private static JComponent wrapScroll(JComponent view) {
         JScrollPane sp = new JScrollPane(view);
-        sp.setBorder(new LineBorder(new Color(0xDCE7E4), 1));
+        sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getVerticalScrollBar().setUnitIncrement(16);
         return sp;
     }
