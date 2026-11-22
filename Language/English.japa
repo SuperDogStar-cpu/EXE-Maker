@@ -70,3 +70,8 @@
 自动（跟随当前运行环境）=Automatic (follow the current runtime)
 不指定，直接用启动创作器的那个 Java=If not set, the Java that launched the creator is used
 简体中文（内置）=Simplified Chinese (built-in)
+教程=Tutorial
+快速上手=Quick start
+逻辑代码=Logic code
+Java 基础=Java basics
+延迟与内置库=Timers & built-ins

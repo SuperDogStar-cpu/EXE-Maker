@@ -226,6 +226,11 @@ public class MainFrame extends JFrame {
                 runPreview();
             }
         }));
+        actions.add(button("教程", Theme.SOFT, Theme.ACCENT_DARK, new Runnable() {
+            public void run() {
+                openTutorial();
+            }
+        }));
         actions.add(button("设置", Theme.SOFT, Theme.ACCENT_DARK, new Runnable() {
             public void run() {
                 openSettings();
@@ -796,6 +801,12 @@ public class MainFrame extends JFrame {
 
     private void updateTitle() {
         setTitle(Lang.t("应用创作器") + " · " + (currentFile == null ? project.title : currentFile.getName()));
+    }
+
+    /** 教程窗口：内置快速上手、逻辑代码、Java 基础、延迟与内置库四份教程 */
+    private void openTutorial() {
+        TutorialDialog d = new TutorialDialog(this);
+        d.setVisible(true);
     }
 
     /** 设置窗口：切语言、导入 .japa 语言包 */
