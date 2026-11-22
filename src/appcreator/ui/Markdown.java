@@ -20,6 +20,10 @@ public final class Markdown {
     private static final Pattern HR = Pattern.compile("^\\s*((\\*\\s*){3,}|(-\\s*){3,}|(_\\s*){3,})\\s*$");
     private static final Pattern SETEXT = Pattern.compile("^(=+|-+)$");
 
+    /** 等宽 + 含汉字的字体优先级（Consolas 没有汉字，代码里的中文注释会变方框） */
+    private static final String[] CJK_MONO = {"NSimSun", "SimSun", "新宋体", "宋体", "Microsoft YaHei", "SimHei", "Dialog"};
+    private static String monoCjkFamily;
+
     private Markdown() {
     }
 
@@ -31,6 +35,53 @@ public final class Markdown {
                 + "a{color:#1E7A63;text-decoration:underline;}"
                 + "</style></head><body>" + body
                 + "</body></html>";
+    }
+
+    /**
+     * 代码用 Consolas 排版，但 Consolas 没有汉字，代码里的中文注释/字符串会渲染成方框。
+     * 这里保持 ASCII 用 Consolas，把非 ASCII 片段单独套一层带汉字的字体（Swing 的 pre 不做逐字回退）。
+     */
+    private static String monoHtml(String escaped) {
+        StringBuilder sb = new StringBuilder(escaped.length() + 32);
+        boolean inCjk = false;
+        for (int i = 0; i < escaped.length(); i++) {
+            char c = escaped.charAt(i);
+            boolean nonAscii = c > 0x7E;
+            if (nonAscii != inCjk) {
+                sb.append(inCjk ? "</font>" : "<font face='" + cjkMono() + "'>");
+                inCjk = nonAscii;
+            }
+            sb.append(c);
+        }
+        if (inCjk) {
+            sb.append("</font>");
+        }
+        return sb.toString();
+    }
+
+    private static String cjkMono() {
+        if (monoCjkFamily == null) {
+            monoCjkFamily = pickCjkMono();
+        }
+        return monoCjkFamily;
+    }
+
+    private static String pickCjkMono() {
+        try {
+            java.util.Set<String> have = new java.util.HashSet<String>();
+            for (String f : java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getAvailableFontFamilyNames()) {
+                have.add(f.toLowerCase());
+            }
+            for (String f : CJK_MONO) {
+                if (have.contains(f.toLowerCase())) {
+                    return f;
+                }
+            }
+        } catch (Exception ignored) {
+            // 取不到字体列表就用界面字体
+        }
+        return Fonts.familyForText("中文");
     }
 
     private static String normalize(String s) {
@@ -182,8 +233,9 @@ public final class Markdown {
             sb.append("<div style=\"font-size:").append(Math.max(8, fs - 2))
                     .append("pt;color:#7C9A93;margin-bottom:2;\">").append(escape(lang)).append("</div>");
         }
-        sb.append("<pre style=\"font-family:Consolas;font-size:").append(mono)
-                .append("pt;color:#1F3D3A;margin:0;\">").append(escape(wrapCode(code))).append("</pre>");
+        sb.append("<pre style=\"font-family:'Consolas';font-size:").append(mono)
+                .append("pt;color:#1F3D3A;margin:0;\">").append(monoHtml(escape(wrapCode(code))))
+                .append("</pre>");
         sb.append("</td></tr></table></td></tr></table>");
         return sb.toString();
     }
@@ -459,8 +511,8 @@ public final class Markdown {
         while (pm.find()) {
             int idx = Integer.parseInt(pm.group(1));
             pm.appendReplacement(sb2, Matcher.quoteReplacement(
-                    "<code style=\"font-family:Consolas;font-size:" + Math.max(8, fs - 1)
-                            + "pt;color:#176B57;\">" + codes.get(idx) + "</code>"));
+                    "<code style=\"font-family:'Consolas';font-size:" + Math.max(8, fs - 1)
+                            + "pt;color:#176B57;\">" + monoHtml(codes.get(idx)) + "</code>"));
         }
         pm.appendTail(sb2);
         return sb2.toString();
