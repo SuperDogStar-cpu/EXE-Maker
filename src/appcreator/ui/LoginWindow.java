@@ -26,8 +26,8 @@ public class LoginWindow extends JFrame {
     private final CardLayout cards = new CardLayout();
     private final JPanel body = new JPanel(cards);
     private final JPanel switchBar = new JPanel(new GridLayout(1, 2, 8, 0));
-    private final RoundButton ghTab = new RoundButton("GitHub 登录", icon("github.png", 18), Theme.ACCENT, Color.WHITE);
-    private final RoundButton msTab = new RoundButton("微软账号登录", icon("microsoft.png", 18), Theme.SOFT, Theme.ACCENT_DARK);
+    private final RoundButton ghTab = new RoundButton("GitHub 登录", icon("github.png", 20), Theme.ACCENT, Color.WHITE);
+    private final RoundButton msTab = new RoundButton("微软账号登录", icon("microsoft.png", 20), Theme.SOFT, Theme.ACCENT_DARK);
     private final Runnable onSuccess;
 
     private final JPasswordField tokenField = new JPasswordField();
@@ -385,29 +385,44 @@ public class LoginWindow extends JFrame {
 
     // ---------------------------------------------------------------- 小工具
 
-    /** 从 jar 里读 24×24 左右的品牌图标，按目标尺寸平滑缩放；读不到就返回 null（按钮只剩文字） */
+    /** 从 jar 里读品牌图标（源图 256×256），逐级减半缩到目标尺寸，边缘更干净；读不到就返回 null（按钮只剩文字） */
     private static Icon icon(String file, final int size) {
         try {
             java.io.InputStream in = LoginWindow.class.getResourceAsStream("/appcreator/ui/icons/" + file);
             if (in == null) {
                 return null;
             }
-            java.awt.image.BufferedImage src = javax.imageio.ImageIO.read(in);
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(in);
             in.close();
-            if (src == null) {
+            if (img == null) {
                 return null;
             }
-            java.awt.image.BufferedImage out =
-                    new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = out.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g.drawImage(src, 0, 0, size, size, null);
-            g.dispose();
+            while (img.getWidth() / 2 >= size) {
+                img = scale(img, Math.max(size, img.getWidth() / 2));
+            }
+            java.awt.image.BufferedImage out = scale(img, size);
             return new ImageIcon(out);
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private static java.awt.image.BufferedImage scale(java.awt.image.BufferedImage src, int size) {
+        java.awt.image.BufferedImage out =
+                new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g.setComposite(java.awt.AlphaComposite.Src);
+        g.setColor(new Color(0, 0, 0, 0));
+        g.fillRect(0, 0, size, size);
+        g.setComposite(java.awt.AlphaComposite.SrcOver);
+        g.drawImage(src, 0, 0, size, size, null);
+        g.dispose();
+        return out;
     }
 
     private static JPanel column() {
