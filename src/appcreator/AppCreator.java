@@ -59,11 +59,25 @@ public class AppCreator {
                 appcreator.io.ComponentData.sync();
                 step("正在检测本机 Java 版本并验证是否可用…");
                 JavaEnv.detect();
+                // 所有文件下载完，先过 GitHub 登录：本机存过令牌就校验一次，不通过再让人填
+                step("正在确认 GitHub 登录状态…");
+                final String verifiedLogin;
+                if (appcreator.io.GitHubAccount.savedToken() != null) {
+                    appcreator.io.GitHubAccount.Result r =
+                            appcreator.io.GitHubAccount.verify(appcreator.io.GitHubAccount.savedToken());
+                    verifiedLogin = r.ok ? r.login : null;
+                } else {
+                    verifiedLogin = null;
+                }
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
                         splash.dispose();
-                        MainFrame frame = new MainFrame();
-                        frame.setVisible(true);
+                        appcreator.ui.LoginWindow.open(verifiedLogin, new Runnable() {
+                            public void run() {
+                                MainFrame frame = new MainFrame();
+                                frame.setVisible(true);
+                            }
+                        });
                     }
                 });
             }
