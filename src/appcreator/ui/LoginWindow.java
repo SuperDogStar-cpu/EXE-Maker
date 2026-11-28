@@ -1,6 +1,7 @@
 package appcreator.ui;
 
 import appcreator.io.Account;
+import appcreator.io.License;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -37,6 +38,10 @@ public class LoginWindow extends JFrame {
     private final JLabel msCode = new JLabel("");
     private final JLabel msStatus = new JLabel(" ");
     private final RoundButton msBtn = new RoundButton("用微软账号登录", Theme.ACCENT, Color.WHITE);
+
+    private final JTextField subField = new JTextField();
+    private final JLabel subStatus = new JLabel(" ");
+    private JPanel subPanel;
 
     private JPanel donePanel;
     private boolean busy;
@@ -75,6 +80,8 @@ public class LoginWindow extends JFrame {
         body.add(buildMicrosoft(), "ms");
         donePanel = buildDone(null);
         body.add(donePanel, "done");
+        subPanel = buildSub();
+        body.add(subPanel, "sub");
 
         switchBar.setOpaque(false);
         switchBar.setBorder(new EmptyBorder(0, 0, 18, 0));
@@ -115,10 +122,10 @@ public class LoginWindow extends JFrame {
         });
     }
 
-    /** 切到某张卡片，同时同步两个按钮的选中样式（已登录卡片不显示按钮） */
+    /** 切到某张卡片，同时同步两个按钮的选中样式（已登录 / 订阅卡片不显示按钮） */
     private void show(String name) {
         cards.show(body, name);
-        boolean login = !"done".equals(name);
+        boolean login = "github".equals(name) || "ms".equals(name);
         switchBar.setVisible(login);
         boolean github = "github".equals(name);
         ghTab.setColors(github ? Theme.ACCENT : Theme.SOFT, github ? Color.WHITE : Theme.ACCENT_DARK);
@@ -337,10 +344,18 @@ public class LoginWindow extends JFrame {
         done.add(account);
         done.add(Box.createVerticalStrut(14));
 
-        done.add(wrapped("所有文件已下载完成，账号校验通过。<br>点下面的按钮进入创作器。", 12, Theme.MUTED));
+        done.add(wrapped("所有文件已下载完成，账号校验通过。", 12, Theme.MUTED));
+        done.add(Box.createVerticalStrut(8));
+
+        boolean active = License.active();
+        JLabel lic = new JLabel((active ? "● " : "○ ") + License.statusText());
+        lic.setFont(Theme.ui(12));
+        lic.setForeground(active ? Theme.ACCENT_DARK : new Color(0xC2410C));
+        lic.setAlignmentX(LEFT_ALIGNMENT);
+        done.add(lic);
         done.add(Box.createVerticalStrut(16));
 
-        RoundButton enter = new RoundButton("进入创作器", Theme.ACCENT, Color.WHITE);
+        RoundButton enter = new RoundButton(active ? "进入创作器" : "输入订阅码续订", Theme.ACCENT, Color.WHITE);
         enter.setAlignmentX(LEFT_ALIGNMENT);
         enter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         enter.addActionListener(new ActionListener() {
@@ -376,10 +391,88 @@ public class LoginWindow extends JFrame {
     }
 
     private void enter() {
+        if (!License.active()) {
+            show("sub");
+            subField.requestFocusInWindow();
+            return;
+        }
         setVisible(false);
         dispose();
         if (onSuccess != null) {
             onSuccess.run();
+        }
+    }
+
+    // ------------------------------------------------------------ 订阅
+
+    private JPanel buildSub() {
+        JPanel form = column();
+
+        form.add(title("输入订阅码"));
+        form.add(Box.createVerticalStrut(8));
+        form.add(wrapped("免费试用已经结束。输入一个订阅码即可再续订 30 天，"
+                + "<br>订阅只记录在本机，不联网校验。", 12, Theme.MUTED));
+        form.add(Box.createVerticalStrut(16));
+        form.add(bold("订阅码"));
+        form.add(Box.createVerticalStrut(6));
+
+        subField.setFont(Theme.mono(13));
+        subField.setForeground(Theme.TEXT);
+        subField.setBackground(new Color(0xF7FBFA));
+        subField.setCaretColor(Theme.ACCENT_DARK);
+        subField.setBorder(BorderFactory.createCompoundBorder(
+                new RoundBorder(8, Theme.BORDER), new EmptyBorder(7, 10, 7, 10)));
+        subField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        subField.setAlignmentX(LEFT_ALIGNMENT);
+        subField.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                doSub();
+            }
+        });
+        form.add(subField);
+        form.add(Box.createVerticalStrut(6));
+        form.add(wrapped("格式形如 " + License.sample() + "，大小写和横线都不计较。", 11, Theme.MUTED));
+        form.add(Box.createVerticalStrut(14));
+
+        subStatus.setFont(Theme.ui(11));
+        subStatus.setForeground(Theme.MUTED);
+        subStatus.setText(" ");
+        subStatus.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(subStatus);
+        form.add(Box.createVerticalStrut(8));
+
+        RoundButton ok = new RoundButton("激活订阅", Theme.ACCENT, Color.WHITE);
+        ok.setAlignmentX(LEFT_ALIGNMENT);
+        ok.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        ok.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                doSub();
+            }
+        });
+        getRootPane().setDefaultButton(ok);
+        form.add(ok);
+        form.add(Box.createVerticalStrut(12));
+
+        JLabel back = link("稍后再说，退出程序", null);
+        back.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                System.exit(0);
+            }
+        });
+        form.add(back);
+        return form;
+    }
+
+    private void doSub() {
+        String msg = License.redeem(subField.getText());
+        boolean ok = msg.startsWith("订阅已续期");
+        subStatus.setForeground(ok ? Theme.ACCENT_DARK : new Color(0xC2410C));
+        subStatus.setText(msg);
+        if (ok) {
+            subField.setText("");
+            subPanel.setPreferredSize(subPanel.getPreferredSize());
+            showDone(Account.isLoggedIn() ? Account.name() : null);
         }
     }
 

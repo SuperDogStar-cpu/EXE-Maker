@@ -61,6 +61,8 @@ public class AppCreator {
                 JavaEnv.detect();
                 // 所有文件下载完，先过登录：本机有记录就校验一次，不通过再让人登录
                 step("正在确认登录状态…");
+                // 首次运行送 30 天试用，试用到期后在登录页要求输入订阅码
+                appcreator.io.License.ensure();
                 String verified = null;
                 if (appcreator.io.Account.GITHUB.equals(appcreator.io.Account.kind())) {
                     verified = appcreator.io.Account.autoGitHub();

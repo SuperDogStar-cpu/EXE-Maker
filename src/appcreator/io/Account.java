@@ -31,8 +31,13 @@ public final class Account {
     public static final String GITHUB = "github";
     public static final String MICROSOFT = "ms";
 
-    /** 微软设备码授权用的公共客户端（Azure CLI 的公开 client id，支持个人与企业账号） */
-    private static final String MS_CLIENT_ID = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+    /**
+     * 微软设备码授权用的公共客户端。原来借 Azure CLI 的 client id，但它是「第一方应用」，
+     * 个人微软账号打开授权页会报 invalid_request（第一方应用不许用户自行同意）。
+     * 现在换成 Thunderbird 注册的第三方公共客户端，个人账号可以正常同意授权。
+     */
+    private static final String MS_CLIENT_ID = "9e5f94bc-e8a4-4e73-b8be-63364c29d753";
+    private static final String MS_SCOPE = "openid profile offline_access https://graph.microsoft.com/User.Read";
     private static final String MS_DEVICE_CODE = "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode";
     private static final String MS_TOKEN = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
     private static final String MS_GRAPH_ME = "https://graph.microsoft.com/v1.0/me";
@@ -311,7 +316,7 @@ public final class Account {
         try {
             String devBody = post(MS_DEVICE_CODE, null,
                     "client_id=" + MS_CLIENT_ID
-                            + "&scope=" + URLEncoder.encode("openid profile User.Read", "UTF-8"));
+                            + "&scope=" + URLEncoder.encode(MS_SCOPE, "UTF-8"));
             if (devBody == null) {
                 return new Result(false, null, "微软登录服务暂时连不上，稍后再试");
             }
@@ -321,6 +326,11 @@ public final class Account {
             String intervalText = pick(devBody, "interval", true);
             String expiresText = pick(devBody, "expires_in", true);
             if (deviceCode == null || userCode == null) {
+                String desc = pick(devBody, "error_description", false);
+                if (desc != null && desc.length() > 0) {
+                    return new Result(false, null, "微软登录服务拒绝："
+                            + desc.substring(0, Math.min(80, desc.length())));
+                }
                 return new Result(false, null, "没拿到验证码，稍后再试");
             }
             int interval = 5;
@@ -368,6 +378,14 @@ public final class Account {
                 }
                 if ("bad_verification_code".equals(err)) {
                     return new Result(false, null, "验证码不对，请重新点登录");
+                }
+                if ("invalid_grant".equals(err) || "invalid_request".equals(err)
+                        || "unauthorized_client".equals(err)) {
+                    return new Result(false, null,
+                            "微软没通过这次授权：企业 / 学校账号通常需要管理员先同意，换个个人微软账号或改用 GitHub 登录");
+                }
+                if ("invalid_client".equals(err)) {
+                    return new Result(false, null, "微软登录服务拒绝了这次请求，请重新点登录");
                 }
                 return new Result(false, null, "登录失败：" + (err == null ? "未知原因" : err));
             }
