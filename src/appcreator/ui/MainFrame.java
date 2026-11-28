@@ -236,6 +236,16 @@ public class MainFrame extends JFrame {
                 openSettings();
             }
         }));
+        // 设置右边显示当前登录账号的头像，点开可以切换账号 / 退出登录
+        actions.add(new AvatarButton(new Runnable() {
+            public void run() {
+                switchAccount(false);
+            }
+        }, new Runnable() {
+            public void run() {
+                switchAccount(true);
+            }
+        }));
         bar.add(actions, BorderLayout.EAST);
         final JPanel topBar = bar;
         bar.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -807,6 +817,21 @@ public class MainFrame extends JFrame {
     private void openTutorial() {
         TutorialDialog d = new TutorialDialog(this);
         d.setVisible(true);
+    }
+
+    /** 换账号：退出登录则清掉本机账号，然后回到登录窗口，登录成功后开一个新的主窗口 */
+    private void switchAccount(final boolean logout) {
+        if (logout) {
+            appcreator.io.Account.clear();
+        }
+        final String current = appcreator.io.Account.isLoggedIn() ? appcreator.io.Account.name() : null;
+        dispose();
+        LoginWindow.open(logout ? null : current, new Runnable() {
+            public void run() {
+                MainFrame frame = new MainFrame();
+                frame.setVisible(true);
+            }
+        });
     }
 
     /** 设置窗口：切语言、导入 .japa 语言包 */

@@ -1,6 +1,6 @@
 package appcreator.ui;
 
-import appcreator.io.GitHubAccount;
+import appcreator.io.Account;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -14,32 +14,40 @@ import java.awt.event.WindowEvent;
 import java.net.URI;
 
 /**
- * 启动后的 GitHub 登录窗口：所有文件下载完成后停在这里，登录成功才进主界面。
+ * 启动后的登录窗口：所有文件下载完成后停在这里，登录成功才进主界面。
  *
- * 上次登录过的话（本机存了令牌）会先校验一遍，校验通过就只留一个「进入创作器」按钮，
- * 不用重新输令牌；校验失败或第一次用，就要求填一个 GitHub 个人访问令牌。
+ * 两种登录方式：GitHub 个人访问令牌、微软账号（设备码授权，浏览器里输验证码）。
+ * 上次登录过的话会显示「已登录」卡片，点「进入创作器」即可，不用重新登录。
  */
 public class LoginWindow extends JFrame {
 
-    private static final String TOKENS_URL = "https://github.com/settings/tokens";
+    private static final String GITHUB_TOKENS = "https://github.com/settings/tokens";
 
     private final CardLayout cards = new CardLayout();
     private final JPanel body = new JPanel(cards);
-    private final JPasswordField tokenField = new JPasswordField();
-    private final JLabel status = new JLabel(" ");
-    private final RoundButton loginBtn = new RoundButton("登录", Theme.ACCENT, Color.WHITE);
     private final Runnable onSuccess;
 
+    private final JPasswordField tokenField = new JPasswordField();
+    private final JLabel ghStatus = new JLabel(" ");
+    private final RoundButton ghBtn = new RoundButton("登录", Theme.ACCENT, Color.WHITE);
+
+    private final JLabel msCode = new JLabel("");
+    private final JLabel msStatus = new JLabel(" ");
+    private final RoundButton msBtn = new RoundButton("用微软账号登录", Theme.ACCENT, Color.WHITE);
+
+    private JPanel donePanel;
+    private boolean busy;
+
     /**
-     * @param verifiedLogin 上次的令牌已经校验通过的账号名；null 表示需要重新登录
-     * @param onSuccess     登录成功（或已登录点「进入」）后执行
+     * @param verifiedName 上次登录的账号（令牌已校验通过 / 微软账号本机记录），null 表示需要登录
+     * @param onSuccess    登录成功后执行
      */
-    public static void open(String verifiedLogin, final Runnable onSuccess) {
-        LoginWindow w = new LoginWindow(verifiedLogin, onSuccess);
+    public static void open(String verifiedName, final Runnable onSuccess) {
+        LoginWindow w = new LoginWindow(verifiedName, onSuccess);
         w.setVisible(true);
     }
 
-    private LoginWindow(String verifiedLogin, Runnable onSuccess) {
+    private LoginWindow(String verifiedName, Runnable onSuccess) {
         super("应用创作器 · 登录");
         this.onSuccess = onSuccess;
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -60,50 +68,61 @@ public class LoginWindow extends JFrame {
         card.setBorder(new EmptyBorder(24, 26, 22, 26));
 
         body.setOpaque(false);
-        body.add(buildForm(), "form");
-        body.add(buildDone(verifiedLogin), "done");
+        body.add(buildGitHub(), "github");
+        body.add(buildMicrosoft(), "ms");
+        donePanel = buildDone(null);
+        body.add(donePanel, "done");
         card.add(body, BorderLayout.CENTER);
 
         root.add(card, BorderLayout.CENTER);
         setContentPane(root);
         setResizable(false);
-        pack();
-        setSize(470, verifiedLogin == null ? getHeight() : 306);
-        setLocationRelativeTo(null);
 
-        cards.show(body, verifiedLogin == null ? "form" : "done");
-        if (verifiedLogin != null) {
-            getRootPane().setDefaultButton(null);
+        if (verifiedName == null) {
+            cards.show(body, "github");
+        } else {
+            donePanel = buildDone(verifiedName);
+            body.remove(body.getComponent(2));
+            body.add(donePanel, "done");
+            cards.show(body, "done");
         }
+        fit();
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                if (verifiedLogin == null) {
+                if (verifiedName == null) {
                     tokenField.requestFocusInWindow();
                 }
             }
         });
     }
 
-    // ---------------------------------------------------------------- 表单态
+    /** 高度按当前卡片算：GitHub / 微软 / 已登录三张卡片高度不一样，不留大片空白 */
+    private void fit() {
+        pack();
+        Component visible = null;
+        for (Component c : body.getComponents()) {
+            if (c.isVisible()) {
+                visible = c;
+            }
+        }
+        int extra = getHeight() - body.getPreferredSize().height;
+        int cardHeight = visible == null ? body.getPreferredSize().height : visible.getPreferredSize().height;
+        setSize(470, Math.max(280, cardHeight + extra));
+        setLocationRelativeTo(null);
+        validate();
+    }
 
-    private JPanel buildForm() {
-        JPanel form = new JPanel();
-        form.setOpaque(false);
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+    // ------------------------------------------------------------ GitHub
 
-        JLabel title = new JLabel("登录 GitHub");
-        title.setFont(Theme.ui(19, Font.BOLD));
-        title.setForeground(Theme.TEXT);
-        title.setAlignmentX(LEFT_ALIGNMENT);
+    private JPanel buildGitHub() {
+        JPanel form = column();
 
-        JLabel sub = wrapped("所有文件已下载完成。<br>请使用 GitHub 账号登录后继续，令牌只保存在本机。",
-                12, Theme.MUTED);
-        sub.setAlignmentX(LEFT_ALIGNMENT);
-
-        JLabel fieldTitle = new JLabel("个人访问令牌");
-        fieldTitle.setFont(Theme.ui(12, Font.BOLD));
-        fieldTitle.setForeground(Theme.TEXT);
-        fieldTitle.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(title("登录 GitHub"));
+        form.add(Box.createVerticalStrut(8));
+        form.add(wrapped("所有文件已下载完成。<br>填一个个人访问令牌即可登录，令牌只保存在本机。", 12, Theme.MUTED));
+        form.add(Box.createVerticalStrut(18));
+        form.add(bold("个人访问令牌"));
+        form.add(Box.createVerticalStrut(6));
 
         tokenField.setFont(Theme.mono(12));
         tokenField.setForeground(Theme.TEXT);
@@ -116,73 +135,78 @@ public class LoginWindow extends JFrame {
         tokenField.setAlignmentX(LEFT_ALIGNMENT);
         tokenField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                doLogin();
+                doGitHub();
             }
         });
-
-        JLabel help = link("打开 GitHub 令牌页");
-        help.setAlignmentX(LEFT_ALIGNMENT);
-
-        status.setFont(Theme.ui(11));
-        status.setForeground(Theme.MUTED);
-        status.setAlignmentX(LEFT_ALIGNMENT);
-
-        loginBtn.setAlignmentX(LEFT_ALIGNMENT);
-        loginBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        loginBtn.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                doLogin();
-            }
-        });
-
-        JLabel tip = wrapped("提示：令牌形如 ghp_ 开头，只读取公开账号信息，<br>不会上传到任何服务器。",
-                11, Theme.MUTED);
-        tip.setAlignmentX(LEFT_ALIGNMENT);
-
-        form.add(title);
-        form.add(Box.createVerticalStrut(8));
-        form.add(sub);
-        form.add(Box.createVerticalStrut(18));
-        form.add(fieldTitle);
-        form.add(Box.createVerticalStrut(6));
         form.add(tokenField);
         form.add(Box.createVerticalStrut(6));
+
+        JLabel help = link("打开 GitHub 令牌页", GITHUB_TOKENS);
         form.add(help);
         form.add(Box.createVerticalStrut(14));
-        form.add(status);
+
+        ghStatus.setFont(Theme.ui(11));
+        ghStatus.setForeground(Theme.MUTED);
+        ghStatus.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(ghStatus);
         form.add(Box.createVerticalStrut(8));
-        form.add(loginBtn);
+
+        ghBtn.setAlignmentX(LEFT_ALIGNMENT);
+        ghBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        ghBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                doGitHub();
+            }
+        });
+        form.add(ghBtn);
         form.add(Box.createVerticalStrut(10));
+
+        JLabel tip = wrapped("提示：令牌形如 ghp_ 开头，只读取公开账号信息，<br>不会上传到任何服务器。", 11, Theme.MUTED);
         form.add(tip);
+        form.add(Box.createVerticalStrut(10));
+
+        JLabel other = link("没有 GitHub？用微软账号登录", null);
+        other.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                cards.show(body, "ms");
+                fit();
+            }
+        });
+        form.add(other);
         return form;
     }
 
-    private void doLogin() {
-        final String token = new String(tokenField.getPassword()).trim();
-        if (token.length() == 0) {
-            status.setForeground(Theme.DANGER);
-            status.setText("请先填令牌");
+    private void doGitHub() {
+        if (busy) {
             return;
         }
-        loginBtn.setEnabled(false);
+        final String token = new String(tokenField.getPassword()).trim();
+        if (token.length() == 0) {
+            ghStatus.setForeground(Theme.DANGER);
+            ghStatus.setText("请先填令牌");
+            return;
+        }
+        busy = true;
+        ghBtn.setEnabled(false);
         tokenField.setEnabled(false);
-        status.setForeground(Theme.MUTED);
-        status.setText("正在验证令牌…");
+        ghStatus.setForeground(Theme.MUTED);
+        ghStatus.setText("正在验证令牌…");
         new Thread(new Runnable() {
             public void run() {
-                final GitHubAccount.Result r = GitHubAccount.verify(token);
+                final Account.Result r = Account.loginGitHub(token);
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
-                        loginBtn.setEnabled(true);
+                        busy = false;
+                        ghBtn.setEnabled(true);
                         tokenField.setEnabled(true);
                         if (r.ok) {
-                            GitHubAccount.save(r.login, token);
-                            status.setForeground(Theme.ACCENT_DARK);
-                            status.setText("登录成功，欢迎 " + r.login);
-                            enter();
+                            ghStatus.setForeground(Theme.ACCENT_DARK);
+                            ghStatus.setText("登录成功，欢迎 " + r.name);
+                            showDone(r.name);
                         } else {
-                            status.setForeground(Theme.DANGER);
-                            status.setText(r.message);
+                            ghStatus.setForeground(Theme.DANGER);
+                            ghStatus.setText(r.message);
                             tokenField.requestFocusInWindow();
                         }
                     }
@@ -191,63 +215,153 @@ public class LoginWindow extends JFrame {
         }, "github-login").start();
     }
 
-    // ------------------------------------------------------------ 已登录态
+    // ------------------------------------------------------------ 微软账号
 
-    private JPanel buildDone(String login) {
-        JPanel done = new JPanel();
-        done.setOpaque(false);
-        done.setLayout(new BoxLayout(done, BoxLayout.Y_AXIS));
+    private JPanel buildMicrosoft() {
+        JPanel form = column();
 
-        JLabel title = new JLabel("已登录 GitHub");
-        title.setFont(Theme.ui(19, Font.BOLD));
-        title.setForeground(Theme.TEXT);
-        title.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(title("登录微软账号"));
+        form.add(Box.createVerticalStrut(8));
+        form.add(wrapped("点下面的按钮，程序会给出一个验证码。<br>在浏览器打开 microsoft.com/devicelogin 输入验证码，<br>用微软账号登录即可，密码不会经过本程序。", 12, Theme.MUTED));
+        form.add(Box.createVerticalStrut(16));
 
-        JLabel who = new JLabel("账号：" + (login == null ? "" : login));
-        who.setFont(Theme.ui(13, Font.BOLD));
-        who.setForeground(Theme.ACCENT_DARK);
-        who.setAlignmentX(LEFT_ALIGNMENT);
-        who.setPreferredSize(new Dimension(360, 22));
-        who.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        msCode.setFont(Theme.mono(22));
+        msCode.setForeground(Theme.ACCENT_DARK);
+        msCode.setAlignmentX(LEFT_ALIGNMENT);
+        msCode.setPreferredSize(new Dimension(160, 30));
+        msCode.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        form.add(msCode);
+        form.add(Box.createVerticalStrut(12));
 
-        JLabel sub = wrapped("所有文件已下载完成，账号校验通过。<br>点下面的按钮进入创作器。",
-                12, Theme.MUTED);
-        sub.setAlignmentX(LEFT_ALIGNMENT);
+        msStatus.setFont(Theme.ui(11));
+        msStatus.setForeground(Theme.MUTED);
+        msStatus.setAlignmentX(LEFT_ALIGNMENT);
+        form.add(msStatus);
+        form.add(Box.createVerticalStrut(8));
 
-        RoundButton enterBtn = new RoundButton("进入创作器", Theme.ACCENT, Color.WHITE);
-        enterBtn.setAlignmentX(LEFT_ALIGNMENT);
-        enterBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        enterBtn.addActionListener(new ActionListener() {
+        msBtn.setAlignmentX(LEFT_ALIGNMENT);
+        msBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        msBtn.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                doMicrosoft();
+            }
+        });
+        form.add(msBtn);
+        form.add(Box.createVerticalStrut(12));
+
+        JLabel other = link("改用 GitHub 令牌登录", null);
+        other.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                cards.show(body, "github");
+                fit();
+            }
+        });
+        form.add(other);
+        return form;
+    }
+
+    private void doMicrosoft() {
+        if (busy) {
+            return;
+        }
+        busy = true;
+        msBtn.setEnabled(false);
+        msCode.setText("----");
+        msStatus.setForeground(Theme.MUTED);
+        msStatus.setText("正在获取验证码…");
+        new Thread(new Runnable() {
+            public void run() {
+                final Account.Result r = Account.loginMicrosoft(new Account.Prompt() {
+                    public void show(final String code, final String url, final String message) {
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run() {
+                                msCode.setText(code);
+                                msStatus.setForeground(Theme.TEXT);
+                                msStatus.setText(message);
+                                browse(url);
+                            }
+                        });
+                    }
+                });
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        busy = false;
+                        msBtn.setEnabled(true);
+                        if (r.ok) {
+                            msStatus.setForeground(Theme.ACCENT_DARK);
+                            msStatus.setText("登录成功");
+                            showDone(r.name);
+                        } else {
+                            msStatus.setForeground(Theme.DANGER);
+                            msStatus.setText(r.message);
+                        }
+                    }
+                });
+            }
+        }, "ms-login").start();
+    }
+
+    // ------------------------------------------------------------ 已登录
+
+    private JPanel buildDone(String name) {
+        JPanel done = column();
+        String who = name == null ? Account.name() : name;
+        String platform = Account.isLoggedIn() ? Account.platformName() : "GitHub";
+
+        JLabel avatar = new JLabel(new ImageIcon(Avatars.render(46, who)));
+        avatar.setAlignmentX(LEFT_ALIGNMENT);
+        done.add(avatar);
+        done.add(Box.createVerticalStrut(12));
+
+        done.add(title("已登录 " + platform));
+        done.add(Box.createVerticalStrut(4));
+
+        JLabel account = new JLabel(Account.isLoggedIn() ? Account.display() : (who == null ? "" : who));
+        account.setFont(Theme.ui(12));
+        account.setForeground(Theme.MUTED);
+        account.setAlignmentX(LEFT_ALIGNMENT);
+        done.add(account);
+        done.add(Box.createVerticalStrut(14));
+
+        done.add(wrapped("所有文件已下载完成，账号校验通过。<br>点下面的按钮进入创作器。", 12, Theme.MUTED));
+        done.add(Box.createVerticalStrut(16));
+
+        RoundButton enter = new RoundButton("进入创作器", Theme.ACCENT, Color.WHITE);
+        enter.setAlignmentX(LEFT_ALIGNMENT);
+        enter.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        enter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 enter();
             }
         });
-        getRootPane().setDefaultButton(enterBtn);
+        getRootPane().setDefaultButton(enter);
+        done.add(enter);
+        done.add(Box.createVerticalStrut(12));
 
-        JLabel switchUser = link("换个账号");
-        switchUser.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel switchUser = link("换个账号", null);
         switchUser.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                GitHubAccount.clear();
-                cards.show(body, "form");
+                Account.clear();
+                cards.show(body, "github");
                 tokenField.setText("");
-                status.setForeground(Theme.MUTED);
-                status.setText("请填新的令牌");
+                ghStatus.setForeground(Theme.MUTED);
+                ghStatus.setText("请填新的令牌");
+                fit();
                 tokenField.requestFocusInWindow();
             }
         });
-
-        done.add(title);
-        done.add(Box.createVerticalStrut(6));
-        done.add(who);
-        done.add(Box.createVerticalStrut(12));
-        done.add(sub);
-        done.add(Box.createVerticalStrut(22));
-        done.add(enterBtn);
-        done.add(Box.createVerticalStrut(12));
         done.add(switchUser);
         return done;
+    }
+
+    private void showDone(String name) {
+        body.remove(donePanel);
+        donePanel = buildDone(name);
+        body.add(donePanel, "done");
+        cards.show(body, "done");
+        fit();
     }
 
     private void enter() {
@@ -260,24 +374,52 @@ public class LoginWindow extends JFrame {
 
     // ---------------------------------------------------------------- 小工具
 
-    private static JLabel wrapped(String text, int size, Color color) {
-        JLabel l = new JLabel("<html><body style=\"width:340px\">" + text + "</body></html>");
-        l.setFont(Theme.ui(size));
-        l.setForeground(color);
+    private static JPanel column() {
+        JPanel p = new JPanel();
+        p.setOpaque(false);
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        return p;
+    }
+
+    private static JLabel title(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(Theme.ui(19, Font.BOLD));
+        l.setForeground(Theme.TEXT);
+        l.setAlignmentX(LEFT_ALIGNMENT);
         return l;
     }
 
-    private static JLabel link(String text) {
+    private static JLabel bold(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(Theme.ui(12, Font.BOLD));
+        l.setForeground(Theme.TEXT);
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        return l;
+    }
+
+    private static JLabel wrapped(String text, int size, Color color) {
+        JLabel l = new JLabel("<html>" + text + "</html>");
+        l.setFont(Theme.ui(size));
+        l.setForeground(color);
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        return l;
+    }
+
+    /** 蓝色下划线链接；url 为 null 时只当可点的文字（由外面挂点击动作） */
+    private static JLabel link(final String text, String url) {
         JLabel l = new JLabel("<html><u>" + text + "</u></html>");
         l.setFont(Theme.ui(11));
         l.setForeground(Theme.ACCENT_DARK);
         l.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        l.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                browse(TOKENS_URL);
-            }
-        });
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        if (url != null) {
+            l.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    browse(url);
+                }
+            });
+        }
         return l;
     }
 

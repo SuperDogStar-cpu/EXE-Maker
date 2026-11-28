@@ -86,7 +86,9 @@
 - **下拉框**：默认「自动（跟随当前运行环境）」；其它项显示成 `Java 21.0.12（JDK · 当前运行）` 这种「版本（JDK / JRE · 是否当前运行）」，鼠标悬停能看到完整安装路径。点「重新检测」会重新扫描（检测在后台线程跑，界面不卡）。
 - **影响范围**：「导出 EXE」用的 `jpackage`、「运行预览」的外部编译回退用的 `javac` / `java`，都优先用你选中的那个 JDK；选的是纯 JRE（没有 `javac` / `jpackage`）时会自动退回当前运行的 JDK，缺工具时弹提示引导你去设置里改。
 - **启动顺序**：打开创作器会先出现一个小窗口，依次显示「正在适配本机字体… → 正在下载语言包…（x/6） → 正在下载教程…（x/5） → 正在下载组件数据… → 正在检测本机 Java 版本并验证是否可用… → 正在确认 GitHub 登录状态…」，下载全部跑完后**停在 GitHub 登录窗口**，登录成功（或点「进入创作器」）才进主界面。
-- **GitHub 登录**：登录窗口要求填一个 GitHub 个人访问令牌（`ghp_` 开头，在 https://github.com/settings/tokens 生成，无需勾选任何权限），程序用 `api.github.com/user` 校验一次，拿到账号名后把「账号名 + 令牌」存到 `%USERPROFILE%\.appcreator\github.txt`（仅本机、不上传）。下次启动会自动校验这个令牌：通过就显示「已登录 GitHub / 账号：xxx」，点按钮进入即可；失效或被删则退回填令牌。窗口上的「换个账号」清掉本机令牌重新登录，关窗口即退出程序。
+- **GitHub 登录**：登录窗口要求填一个 GitHub 个人访问令牌（`ghp_` 开头，在 https://github.com/settings/tokens 生成，无需勾选任何权限），程序用 `api.github.com/user` 校验一次，拿到账号名后把「账号名 + 令牌」存到 `%USERPROFILE%\.appcreator\account.txt`（仅本机、不上传），并把 GitHub 头像下到 `~/.appcreator/avatar.png`。下次启动会自动校验这个令牌：通过就显示「已登录 GitHub」，点按钮进入即可；失效或被删则退回登录界面。
+- **微软账号登录**：不想用令牌就点「用微软账号登录」——程序走微软设备码授权（device code flow），给出一个 8 位验证码并自动打开浏览器（`microsoft.com/devicelogin`），输入验证码、用微软账号登录即可，**密码不经过本程序**；登录成功读一次 Microsoft Graph 的账号名和头像并存到本地。超时、拒绝授权、验证码错误都有对应提示。
+- **头像在「设置」右边**：主界面工具栏最右侧是当前账号的圆形头像（有照片就填满裁圆，没有就用账号名首字母），鼠标悬停显示「平台 · 账号」，点开菜单有「切换账号」和「退出登录」：切换账号回到登录窗口（保留当前账号已登录状态，可在里面「换个账号」），退出登录清掉本机账号后重新登录。
 - **自动下载教程**：启动时会把 5 份教程 `.md` 从 GitHub 仓库根目录拉到 `%USERPROFILE%\.appcreator\tutorial`（macOS / Linux 为 `~/.appcreator/tutorial`）；已存在的文件也会顺手刷新成最新版。raw.githubusercontent 偶发握手失败时会自动重试并换 jsDelivr 兜底，仍然失败就继续用 jar 内置的那份，不影响进主界面。
 - **自动下载组件数据**：启动时从 GitHub 仓库的 `Data/components.jcmp` 拉取 Visual Studio .NET（WinForms）工具箱组件清单，存到 `%USERPROFILE%\.appcreator\data\components.jcmp`（macOS / Linux 是 `~/.appcreator/data/`），下载失败或没网就用程序内置那份。清单每行一个组件：`分类 ⇥ 名称 ⇥ 类型 ⇥ 默认宽 ⇥ 默认高 ⇥ 默认文字 ⇥ 图标字`，改完重新上传即可扩充组件库。
 - **自动下载语言包**：启动时会从 GitHub 仓库的 `Language/` 目录把 6 个 `.japa` 拉到用户目录下的 `Language`（Windows `%USERPROFILE%\Language`，macOS / Linux `~/Language`），下次离线也能直接用；网络不通或某个包失败只会跳过，不影响进主界面。
@@ -159,7 +161,7 @@ Java应用创作器/
 │  ├─ gen/                  代码生成 CodeGenerator、即时编译运行 Runner、导出 EXE 的 Exporter、图标 IconUtil
 │  └─ io/                   项目文件读写 ProjectIO、界面语言 Lang（.japa 语言包）、
 │                           LanguageSync / TutorialSync / ComponentData（启动时下载语言包、教程、组件清单）
-│                           GitHubAccount（登录令牌保存与校验）
+│                           Account（账号保存、GitHub 令牌校验、微软设备码登录、头像）
 ├─ Language/                6 国语言包（English.japa、日本語.japa、한국어.japa …）
 ├─ Data/components.jcmp     .NET（WinForms）工具箱组件清单（启动时自动下载最新一份）
 ├─ 快速上手.md / 控件逻辑代码.md / Java基础语法.md / Java延迟与内置库.md　教程源文件（也内置进 jar）
