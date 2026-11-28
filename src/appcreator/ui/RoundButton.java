@@ -14,7 +14,15 @@ public class RoundButton extends JButton {
     private Color pressColor;
 
     public RoundButton(String text, Color base, Color fg) {
+        this(text, null, base, fg);
+    }
+
+    public RoundButton(String text, Icon icon, Color base, Color fg) {
         super(text);
+        if (icon != null) {
+            setIcon(icon);
+            setIconTextGap(7);
+        }
         setColors(base, fg);
         setFont(Theme.ui(13));
         setContentAreaFilled(false);

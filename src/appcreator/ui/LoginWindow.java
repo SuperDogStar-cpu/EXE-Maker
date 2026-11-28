@@ -25,6 +25,9 @@ public class LoginWindow extends JFrame {
 
     private final CardLayout cards = new CardLayout();
     private final JPanel body = new JPanel(cards);
+    private final JPanel switchBar = new JPanel(new GridLayout(1, 2, 8, 0));
+    private final RoundButton ghTab = new RoundButton("GitHub 登录", icon("github.png", 18), Theme.ACCENT, Color.WHITE);
+    private final RoundButton msTab = new RoundButton("微软账号登录", icon("microsoft.png", 18), Theme.SOFT, Theme.ACCENT_DARK);
     private final Runnable onSuccess;
 
     private final JPasswordField tokenField = new JPasswordField();
@@ -72,6 +75,23 @@ public class LoginWindow extends JFrame {
         body.add(buildMicrosoft(), "ms");
         donePanel = buildDone(null);
         body.add(donePanel, "done");
+
+        switchBar.setOpaque(false);
+        switchBar.setBorder(new EmptyBorder(0, 0, 18, 0));
+        switchBar.add(ghTab);
+        switchBar.add(msTab);
+        ghTab.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                show("github");
+            }
+        });
+        msTab.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                show("ms");
+            }
+        });
+
+        card.add(switchBar, BorderLayout.NORTH);
         card.add(body, BorderLayout.CENTER);
 
         root.add(card, BorderLayout.CENTER);
@@ -79,14 +99,13 @@ public class LoginWindow extends JFrame {
         setResizable(false);
 
         if (verifiedName == null) {
-            cards.show(body, "github");
+            show("github");
         } else {
             donePanel = buildDone(verifiedName);
             body.remove(body.getComponent(2));
             body.add(donePanel, "done");
-            cards.show(body, "done");
+            show("done");
         }
-        fit();
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 if (verifiedName == null) {
@@ -94,6 +113,17 @@ public class LoginWindow extends JFrame {
                 }
             }
         });
+    }
+
+    /** 切到某张卡片，同时同步两个按钮的选中样式（已登录卡片不显示按钮） */
+    private void show(String name) {
+        cards.show(body, name);
+        boolean login = !"done".equals(name);
+        switchBar.setVisible(login);
+        boolean github = "github".equals(name);
+        ghTab.setColors(github ? Theme.ACCENT : Theme.SOFT, github ? Color.WHITE : Theme.ACCENT_DARK);
+        msTab.setColors(github ? Theme.SOFT : Theme.ACCENT, github ? Theme.ACCENT_DARK : Color.WHITE);
+        fit();
     }
 
     /** 高度按当前卡片算：GitHub / 微软 / 已登录三张卡片高度不一样，不留大片空白 */
@@ -163,17 +193,6 @@ public class LoginWindow extends JFrame {
 
         JLabel tip = wrapped("提示：令牌形如 ghp_ 开头，只读取公开账号信息，<br>不会上传到任何服务器。", 11, Theme.MUTED);
         form.add(tip);
-        form.add(Box.createVerticalStrut(10));
-
-        JLabel other = link("没有 GitHub？用微软账号登录", null);
-        other.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                cards.show(body, "ms");
-                fit();
-            }
-        });
-        form.add(other);
         return form;
     }
 
@@ -225,10 +244,11 @@ public class LoginWindow extends JFrame {
         form.add(wrapped("点下面的按钮，程序会给出一个验证码。<br>在浏览器打开 microsoft.com/devicelogin 输入验证码，<br>用微软账号登录即可，密码不会经过本程序。", 12, Theme.MUTED));
         form.add(Box.createVerticalStrut(16));
 
-        msCode.setFont(Theme.mono(22));
-        msCode.setForeground(Theme.ACCENT_DARK);
+        msCode.setFont(Theme.ui(12));
+        msCode.setForeground(Theme.MUTED);
+        msCode.setText("点击下面的按钮获取验证码");
         msCode.setAlignmentX(LEFT_ALIGNMENT);
-        msCode.setPreferredSize(new Dimension(160, 30));
+        msCode.setPreferredSize(new Dimension(240, 30));
         msCode.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         form.add(msCode);
         form.add(Box.createVerticalStrut(12));
@@ -247,17 +267,6 @@ public class LoginWindow extends JFrame {
             }
         });
         form.add(msBtn);
-        form.add(Box.createVerticalStrut(12));
-
-        JLabel other = link("改用 GitHub 令牌登录", null);
-        other.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                cards.show(body, "github");
-                fit();
-            }
-        });
-        form.add(other);
         return form;
     }
 
@@ -267,7 +276,9 @@ public class LoginWindow extends JFrame {
         }
         busy = true;
         msBtn.setEnabled(false);
-        msCode.setText("----");
+        msCode.setFont(Theme.mono(22));
+        msCode.setForeground(Theme.ACCENT_DARK);
+        msCode.setText("···");
         msStatus.setForeground(Theme.MUTED);
         msStatus.setText("正在获取验证码…");
         new Thread(new Runnable() {
@@ -276,6 +287,8 @@ public class LoginWindow extends JFrame {
                     public void show(final String code, final String url, final String message) {
                         SwingUtilities.invokeLater(new Runnable() {
                             public void run() {
+                                msCode.setFont(Theme.mono(22));
+                                msCode.setForeground(Theme.ACCENT_DARK);
                                 msCode.setText(code);
                                 msStatus.setForeground(Theme.TEXT);
                                 msStatus.setText(message);
@@ -344,11 +357,10 @@ public class LoginWindow extends JFrame {
             @Override
             public void mouseClicked(MouseEvent e) {
                 Account.clear();
-                cards.show(body, "github");
                 tokenField.setText("");
                 ghStatus.setForeground(Theme.MUTED);
                 ghStatus.setText("请填新的令牌");
-                fit();
+                show("github");
                 tokenField.requestFocusInWindow();
             }
         });
@@ -360,8 +372,7 @@ public class LoginWindow extends JFrame {
         body.remove(donePanel);
         donePanel = buildDone(name);
         body.add(donePanel, "done");
-        cards.show(body, "done");
-        fit();
+        show("done");
     }
 
     private void enter() {
@@ -373,6 +384,31 @@ public class LoginWindow extends JFrame {
     }
 
     // ---------------------------------------------------------------- 小工具
+
+    /** 从 jar 里读 24×24 左右的品牌图标，按目标尺寸平滑缩放；读不到就返回 null（按钮只剩文字） */
+    private static Icon icon(String file, final int size) {
+        try {
+            java.io.InputStream in = LoginWindow.class.getResourceAsStream("/appcreator/ui/icons/" + file);
+            if (in == null) {
+                return null;
+            }
+            java.awt.image.BufferedImage src = javax.imageio.ImageIO.read(in);
+            in.close();
+            if (src == null) {
+                return null;
+            }
+            java.awt.image.BufferedImage out =
+                    new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = out.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.drawImage(src, 0, 0, size, size, null);
+            g.dispose();
+            return new ImageIcon(out);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 
     private static JPanel column() {
         JPanel p = new JPanel();
